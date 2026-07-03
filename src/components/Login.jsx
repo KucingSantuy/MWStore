@@ -81,7 +81,7 @@ export default function Login({ onLoginSuccess }) {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={{ marginBottom: "16px" }}>
-            <label className="form-label">Username</label>
+            <label className="form-label">Username *</label>
             <input
               type="text"
               className="form-control"
@@ -93,7 +93,7 @@ export default function Login({ onLoginSuccess }) {
           </div>
 
           <div className="form-group" style={{ marginBottom: "24px" }}>
-            <label className="form-label">Password</label>
+            <label className="form-label">Password *</label>
             <input
               type="password"
               className="form-control"

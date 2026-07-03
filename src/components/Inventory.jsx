@@ -39,7 +39,7 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
     if (cat.includes("mie") || cat.includes("mi ")) return "MIE";
     if (cat.includes("tepung")) return "TPG";
     if (cat.includes("bumbu")) return "BMB";
-    if (cat.includes("cup") || cat.includes("gelas") || cat.includes("plastik")) return "CUP";
+    if (cat.includes("cup") || cat.includes("gelas")) return "CUP";
     if (cat.includes("margarin") || cat.includes("mentega")) return "MRG";
     if (cat.includes("susu")) return "SSU";
     
@@ -314,7 +314,7 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Kategori</label>
+                    <label className="form-label">Kategori *</label>
                     <select
                       className="form-control"
                       value={showNewCategoryInput ? "__new__" : newItem.category}
@@ -339,7 +339,7 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
 
                 {showNewCategoryInput && (
                   <div className="form-group" style={{ marginBottom: "16px" }}>
-                    <label className="form-label">Nama Kategori Baru</label>
+                    <label className="form-label">Nama Kategori Baru *</label>
                     <input
                       type="text"
                       className="form-control"
@@ -352,7 +352,7 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
                 )}
 
                 <div className="form-group">
-                  <label className="form-label">Nama Sembako</label>
+                  <label className="form-label">Nama Sembako *</label>
                   <input
                     type="text"
                     className="form-control"
@@ -388,7 +388,7 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Satuan</label>
+                    <label className="form-label">Satuan *</label>
                     <input
                       type="text"
                       className="form-control"
@@ -469,7 +469,7 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Kategori</label>
+                    <label className="form-label">Kategori *</label>
                     <select
                       className="form-control"
                       value={showEditCategoryInput ? "__new__" : editingItem.category}
@@ -494,7 +494,7 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
 
                 {showEditCategoryInput && (
                   <div className="form-group" style={{ marginBottom: "16px" }}>
-                    <label className="form-label">Nama Kategori Baru</label>
+                    <label className="form-label">Nama Kategori Baru *</label>
                     <input
                       type="text"
                       className="form-control"
@@ -507,7 +507,7 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
                 )}
 
                 <div className="form-group">
-                  <label className="form-label">Nama Sembako</label>
+                  <label className="form-label">Nama Sembako *</label>
                   <input
                     type="text"
                     className="form-control"
@@ -542,7 +542,7 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Satuan</label>
+                    <label className="form-label">Satuan *</label>
                     <input
                       type="text"
                       className="form-control"
