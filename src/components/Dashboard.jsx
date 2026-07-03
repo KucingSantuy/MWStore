@@ -224,7 +224,7 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
         </div>
       </div>
 
-      <div style={{ marginTop: "24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }} className="dashboard-grid">
+      <div style={{ marginTop: "24px" }} className="dashboard-two-col-grid">
         <div className="content-card">
           <div className="card-title">Sebaran Kategori Stok</div>
           <div className="category-progress-list">

@@ -40,19 +40,19 @@ export default function Contacts({
         (t) => t.type === "masuk" && t.location && t.location.trim().toLowerCase() === normalizedContactName
       );
       const totalOrders = supplierTxs.length;
-      const totalAmount = supplierTxs.reduce((sum, t) => sum + t.total, 0);
+      const totalAmount = supplierTxs.reduce((sum, t) => sum + Number(t.total || 0), 0);
       return { totalOrders, totalAmount };
     } else {
       const customerTxs = transactions.filter(
         (t) => t.type === "keluar" && t.customer && t.customer.trim().toLowerCase() === normalizedContactName
       );
       const totalOrders = customerTxs.length;
-      const totalAmount = customerTxs.reduce((sum, t) => sum + t.total, 0);
+      const totalAmount = customerTxs.reduce((sum, t) => sum + Number(t.total || 0), 0);
 
       const customerDebts = debts.filter(
         (d) => d.customer && d.customer.trim().toLowerCase() === normalizedContactName && d.status === "belum_lunas"
       );
-      const outstandingDebt = customerDebts.reduce((sum, d) => sum + d.remaining, 0);
+      const outstandingDebt = customerDebts.reduce((sum, d) => sum + Number(d.remaining || 0), 0);
 
       return { totalOrders, totalAmount, outstandingDebt };
     }

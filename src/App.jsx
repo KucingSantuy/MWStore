@@ -27,6 +27,9 @@ export default function App() {
 
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
   const [changePasswordData, setChangePasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -120,6 +123,16 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const closeDropdown = (e) => {
+      if (!e.target.closest('.profile-dropdown-wrapper')) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('click', closeDropdown);
+    return () => document.removeEventListener('click', closeDropdown);
+  }, []);
+
   const toggleTheme = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
   };
@@ -146,6 +159,27 @@ export default function App() {
       alert("Password berhasil diperbarui!");
       setIsChangePasswordOpen(false);
       setChangePasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+  };
+
+  const handleResetDatabase = async () => {
+    if (resetConfirmText !== "RESET DATA TOKO") return;
+    try {
+      const res = await fetch("/api/reset", {
+        method: "POST",
+        headers: getHeaders()
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Gagal mereset database");
+      }
+      alert("Database berhasil direset ke kondisi awal!");
+      setIsResetConfirmOpen(false);
+      setIsChangePasswordOpen(false);
+      setResetConfirmText("");
+      handleLogout();
     } catch (err) {
       alert("Error: " + err.message);
     }
@@ -453,36 +487,9 @@ export default function App() {
             </ul>
           </nav>
         </div>
-        <div className="sidebar-footer">
-          <button className="theme-toggle-btn" onClick={toggleTheme}>
-            {theme === "light" ? "Dark Mode" : "Light Mode"}
-          </button>
-          <button
-            className="theme-toggle-btn"
-            onClick={() => { setIsChangePasswordOpen(true); setIsSidebarOpen(false); }}
-            style={{ marginTop: "8px" }}
-          >
-            Ganti Password
-          </button>
-          <button
-            className="theme-toggle-btn"
-            onClick={handleLogout}
-            style={{
-              marginTop: "8px",
-              backgroundColor: "var(--danger)",
-              color: "#ffffff",
-              border: "none",
-              cursor: "pointer"
-            }}
-          >
-            Keluar (Logout)
-          </button>
-          <div style={{ textAlign: "center", fontSize: "11px", color: "var(--sidebar-text)", marginTop: "12px" }}>
-            2026 MWStore
-            <br />
-            <span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={clearAllData}>
-              Reset Database
-            </span>
+        <div className="sidebar-footer" style={{ borderTop: "1px solid rgba(255, 255, 255, 0.1)", paddingTop: "16px" }}>
+          <div style={{ textAlign: "center", fontSize: "11px", color: "var(--sidebar-text)" }}>
+            © 2026 MWStore
           </div>
         </div>
       </aside>
@@ -503,9 +510,36 @@ export default function App() {
               {activeTab === "logs" && "Riwayat Seluruh Transaksi"}
             </div>
           </div>
-          <div className="top-bar-meta">
+          <div className="top-bar-meta" style={{ display: "flex", alignItems: "center", gap: "20px" }}>
             <div className="meta-time">{formatDateTime(currentTime)}</div>
-            <div style={{ fontWeight: 600 }}>Pemilik Toko</div>
+            
+            <button className="theme-toggle-icon-btn" onClick={toggleTheme} title={theme === "light" ? "Ganti ke Tema Gelap" : "Ganti ke Tema Terang"}>
+              {theme === "light" ? (
+                <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              ) : (
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              )}
+            </button>
+
+            <div className="profile-dropdown-wrapper">
+              <button className="profile-btn" onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}>
+                <div className="profile-avatar">P</div>
+                <span>Pemilik Toko</span>
+                <svg className={`chevron-icon ${isProfileDropdownOpen ? 'open' : ''}`} viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              {isProfileDropdownOpen && (
+                <div className="profile-dropdown-menu">
+                  <button onClick={() => { setIsChangePasswordOpen(true); setIsProfileDropdownOpen(false); }}>
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83 2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Pengaturan Akun
+                  </button>
+                  <button onClick={() => { handleLogout(); setIsProfileDropdownOpen(false); }} className="danger-item">
+                    <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Keluar (Logout)
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -585,7 +619,7 @@ export default function App() {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3 className="modal-title">Ganti Password Admin</h3>
+              <h3 className="modal-title">Pengaturan Akun</h3>
               <button className="modal-close" onClick={() => {
                 setIsChangePasswordOpen(false);
                 setChangePasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
@@ -625,6 +659,16 @@ export default function App() {
                     onChange={(e) => setChangePasswordData({ ...changePasswordData, confirmPassword: e.target.value })}
                   />
                 </div>
+                
+                <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--border-color)" }}>
+                  <h4 style={{ color: "var(--danger)", fontSize: "14px", fontWeight: 600, marginBottom: "8px" }}>Zona Bahaya (Danger Zone)</h4>
+                  <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "12px", lineHeight: "1.4" }}>
+                    Menghapus seluruh data barang, transaksi, kontak, dan piutang toko secara permanen dari database Clever Cloud. Tindakan ini tidak dapat dibatalkan.
+                  </p>
+                  <button type="button" className="btn btn-danger" onClick={() => setIsResetConfirmOpen(true)} style={{ width: "100%" }}>
+                    Reset Seluruh Database Toko
+                  </button>
+                </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => {
@@ -638,6 +682,49 @@ export default function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isResetConfirmOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: "450px" }}>
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ color: "var(--danger)" }}>Konfirmasi Reset Database</h3>
+              <button className="modal-close" onClick={() => { setIsResetConfirmOpen(false); setResetConfirmText(""); }}>
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: "13px", color: "var(--text-primary)", marginBottom: "16px", lineHeight: "1.5" }}>
+                Tindakan ini akan menghapus secara permanen seluruh data transaksi, stok barang, piutang, dan kontak mitra bisnis toko Anda.
+              </p>
+              <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "12px" }}>
+                Ketik <strong>RESET DATA TOKO</strong> pada kolom di bawah ini untuk melanjutkan:
+              </p>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="RESET DATA TOKO"
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                style={{ textTransform: "uppercase" }}
+              />
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => { setIsResetConfirmOpen(false); setResetConfirmText(""); }}>
+                Batal
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={resetConfirmText !== "RESET DATA TOKO"}
+                onClick={handleResetDatabase}
+                style={{ opacity: resetConfirmText === "RESET DATA TOKO" ? 1 : 0.5, cursor: resetConfirmText === "RESET DATA TOKO" ? "pointer" : "not-allowed" }}
+              >
+                Ya, Hapus Semua Data
+              </button>
+            </div>
           </div>
         </div>
       )}
