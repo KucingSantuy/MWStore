@@ -2,6 +2,8 @@ import express from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
 import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const app = express();
 app.use(cors());
@@ -632,6 +634,18 @@ app.post('/api/reset', authenticate, async (req, res) => {
     console.error("Error resetting database:", error);
     res.status(500).json({ error: "Gagal mereset database." });
   }
+});
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use(express.static(path.join(__dirname, 'dist')));
+
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 initDB().then(() => {
