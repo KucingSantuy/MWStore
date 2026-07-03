@@ -22,12 +22,13 @@ const dbConfig = {
 
 let pool;
 
-app.use('/api', (req, res, next) => {
-  if (req.path === '/login') {
-    return next();
-  }
+app.use('/api', async (req, res, next) => {
   if (!pool && req.path !== '/reset') {
-    return res.status(503).json({ error: "Layanan database tidak tersedia. Pastikan server MySQL berjalan." });
+    try {
+      await initDB();
+    } catch (err) {
+      return res.status(503).json({ error: "Layanan database tidak tersedia. Pastikan server MySQL berjalan." });
+    }
   }
   next();
 });
@@ -648,8 +649,12 @@ app.get('*', (req, res, next) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-initDB().then(() => {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server is running on port ${PORT}`);
+if (!process.env.VERCEL) {
+  initDB().then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
   });
-});
+}
+
+export default app;
