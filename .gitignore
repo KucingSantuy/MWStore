@@ -26,3 +26,6 @@ dist-ssr
 # Scratch recovery scripts
 scratch_*
 
+# Environment variables
+.env
+
