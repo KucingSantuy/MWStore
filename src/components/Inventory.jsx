@@ -4,12 +4,10 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Semua");
   
-  // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
-  // Form states
   const [newItem, setNewItem] = useState({
     sku: "",
     name: "",
@@ -25,10 +23,8 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
   const [editingItem, setEditingItem] = useState(null);
   const [selectedItemHistory, setSelectedItemHistory] = useState(null);
 
-  // Constants categories
   const categories = ["Beras", "Minyak Goreng", "Gula", "Telur", "Mie Instan", "Tepung", "Bumbu", "Lain-lain"];
 
-  // Filter items
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -37,21 +33,18 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
     return matchesSearch && matchesCategory;
   });
 
-  // Submit handlers
   const handleAddSubmit = (e) => {
     e.preventDefault();
     if (!newItem.sku || !newItem.name || !newItem.unit) {
       alert("Mohon lengkapi SKU, nama barang, dan satuan.");
       return;
     }
-    // Check duplicate SKU
     if (items.some((it) => it.sku.toLowerCase() === newItem.sku.toLowerCase())) {
       alert("SKU / Kode barang sudah terdaftar!");
       return;
     }
     onAddItem(newItem);
     setIsAddModalOpen(false);
-    // Reset form
     setNewItem({
       sku: "",
       name: "",
@@ -88,7 +81,6 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
 
   return (
     <div>
-      {/* Search and Filters */}
       <div className="page-header-controls">
         <div className="search-filter-box">
           <div className="search-input-wrapper">
@@ -120,11 +112,10 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
         </div>
 
         <button className="btn btn-primary" onClick={() => setIsAddModalOpen(true)}>
-           Tambah Barang Baru
+          Tambah Barang Baru
         </button>
       </div>
 
-      {/* Main Stock Table */}
       <div className="content-card">
         <div className="table-container">
           <table className="custom-table">
@@ -213,7 +204,6 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
         </div>
       </div>
 
-      {/* MODAL: Add Item */}
       {isAddModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -244,7 +234,8 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
                       value={newItem.category}
                       onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
                     >
-                      {categories.map((cat) => (                        <option key={cat} value={cat}>
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>
                           {cat}
                         </option>
                       ))}
@@ -326,7 +317,7 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
                     <label className="form-label">Harga Jual Default (Rp)</label>
                     <input
                       type="number"
-                      className="formT-control"
+                      className="form-control"
                       min="0"
                       value={newItem.sellingPrice}
                       onChange={(e) => setNewItem({ ...newItem, sellingPrice: Number(e.target.value) })}
@@ -347,7 +338,6 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
         </div>
       )}
 
-      {/* MODAL: Edit Item */}
       {isEditModalOpen && editingItem && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -456,7 +446,6 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
         </div>
       )}
 
-      {/* MODAL: Price History & Supplier Locations */}
       {isHistoryModalOpen && selectedItemHistory && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -467,7 +456,7 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
               </button>
             </div>
             <div className="modal-body" style={{ maxHeight: "60vh" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "18px", fontSize: "13px" }}>
+              <div style={{ display: "flex", justifycontent: "space-between", marginBottom: "18px", fontSize: "13px" }}>
                 <span>Harga Jual Saat Ini: <strong>{formatRupiah(selectedItemHistory.sellingPrice)}</strong></span>
                 <span>Stok: <strong>{selectedItemHistory.stock} {selectedItemHistory.unit}</strong></span>
               </div>

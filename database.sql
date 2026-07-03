@@ -1,10 +1,12 @@
--- SQL Script to manually create tables in phpMyAdmin
--- Database: mwstore
-
 CREATE DATABASE IF NOT EXISTS `mwstore`;
 USE `mwstore`;
 
--- 1. Table items
+CREATE TABLE IF NOT EXISTS `users` (
+  `id` VARCHAR(50) PRIMARY KEY,
+  `username` VARCHAR(50) NOT NULL UNIQUE,
+  `password` VARCHAR(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `items` (
   `id` VARCHAR(50) PRIMARY KEY,
   `sku` VARCHAR(50) NOT NULL UNIQUE,
@@ -17,7 +19,6 @@ CREATE TABLE IF NOT EXISTS `items` (
   `sellingPrice` DECIMAL(12, 2) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 2. Table purchase_history
 CREATE TABLE IF NOT EXISTS `purchase_history` (
   `id` VARCHAR(50) PRIMARY KEY,
   `itemId` VARCHAR(50) NOT NULL,
@@ -28,9 +29,9 @@ CREATE TABLE IF NOT EXISTS `purchase_history` (
   FOREIGN KEY (`itemId`) REFERENCES `items`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 3. Table transactions
 CREATE TABLE IF NOT EXISTS `transactions` (
   `id` VARCHAR(50) PRIMARY KEY,
+  `invoiceId` VARCHAR(50),
   `date` VARCHAR(20) NOT NULL,
   `type` VARCHAR(20) NOT NULL,
   `itemId` VARCHAR(50),
@@ -46,7 +47,6 @@ CREATE TABLE IF NOT EXISTS `transactions` (
   `debt` DECIMAL(12, 2) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 4. Table contacts
 CREATE TABLE IF NOT EXISTS `contacts` (
   `id` VARCHAR(50) PRIMARY KEY,
   `name` VARCHAR(255) NOT NULL,
@@ -55,9 +55,9 @@ CREATE TABLE IF NOT EXISTS `contacts` (
   `type` VARCHAR(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 5. Table debts
 CREATE TABLE IF NOT EXISTS `debts` (
   `id` VARCHAR(50) PRIMARY KEY,
+  `invoiceId` VARCHAR(50),
   `txId` VARCHAR(50) NOT NULL,
   `date` VARCHAR(20) NOT NULL,
   `customer` VARCHAR(255) NOT NULL,
@@ -68,7 +68,9 @@ CREATE TABLE IF NOT EXISTS `debts` (
   `status` VARCHAR(50) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- --- INITIAL DATA SEED ---
+INSERT INTO `users` (`id`, `username`, `password`) VALUES
+('user-admin', 'admin', '24075307a160a5b9cb48a7166788ec9846b4129528859f039a7a00f2771d9857')
+ON DUPLICATE KEY UPDATE `id`=`id`;
 
 INSERT INTO `items` (`id`, `sku`, `name`, `category`, `stock`, `minStock`, `unit`, `purchasePrice`, `sellingPrice`) VALUES
 ('item-1', 'TP-001', 'Tepung Lencana', 'Tepung', 8, 2, 'karung', 190000.00, 210000.00),

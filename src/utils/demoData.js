@@ -1,4 +1,3 @@
-// Seed data to initialize the Sembako Stock Management System with user-provided items
 export const initialItems = [
   {
     id: "item-1",

@@ -1,9 +1,8 @@
 import { useState } from "react";
 
 export default function Reports({ transactions, items, formatRupiah }) {
-  const [reportType, setReportType] = useState("monthly"); // weekly or monthly
+  const [reportType, setReportType] = useState("monthly");
 
-  // Date ranges helper
   const getRangeStartDate = () => {
     const today = new Date();
     if (reportType === "weekly") {
@@ -17,13 +16,11 @@ export default function Reports({ transactions, items, formatRupiah }) {
   const startDate = getRangeStartDate();
   const todayDate = new Date().toISOString().split("T")[0];
 
-  // Filter transactions in range
   const rangeTransactions = transactions.filter((t) => {
     const tDateStr = t.date ? (typeof t.date === 'string' ? t.date.split("T")[0] : new Date(t.date).toISOString().split("T")[0]) : '';
     return tDateStr >= startDate && tDateStr <= todayDate;
   });
 
-  // Financial aggregates
   const totalSalesVal = rangeTransactions
     .filter((t) => t.type === "keluar")
     .reduce((sum, t) => sum + Number(t.total || 0), 0);
@@ -32,7 +29,6 @@ export default function Reports({ transactions, items, formatRupiah }) {
     .filter((t) => t.type === "masuk")
     .reduce((sum, t) => sum + Number(t.total || 0), 0);
 
-  // Actual cash collected = (Lunas sales) + (Downpayments on credit sales) + (Debt payments)
   const salesCashCollected = rangeTransactions
     .filter((t) => t.type === "keluar")
     .reduce((sum, t) => sum + Number(t.amountPaid || 0), 0);
@@ -43,8 +39,6 @@ export default function Reports({ transactions, items, formatRupiah }) {
 
   const totalCashIn = salesCashCollected + debtPaymentsCollected;
 
-  // Cost of Goods Sold (HPP) & Net Profit from sales
-  // For each sale in range, calculate: qty * item.purchasePrice (at time of sale or current)
   const costOfGoodsSold = rangeTransactions
     .filter((t) => t.type === "keluar")
     .reduce((sum, t) => {
@@ -55,12 +49,10 @@ export default function Reports({ transactions, items, formatRupiah }) {
 
   const netProfit = totalSalesVal - costOfGoodsSold;
 
-  // Unpaid balance in range
   const unpaidBalanceCreated = rangeTransactions
     .filter((t) => t.type === "keluar" && t.paymentStatus === "belum_lunas")
     .reduce((sum, t) => sum + Number(t.debt || 0), 0);
 
-  // Top Selling Items in Range
   const salesQuantityMap = rangeTransactions
     .filter((t) => t.type === "keluar")
     .reduce((acc, t) => {
@@ -77,8 +69,6 @@ export default function Reports({ transactions, items, formatRupiah }) {
     .sort((a, b) => b.qty - a.qty)
     .slice(0, 5);
 
-  // Supplier Price Analysis
-  // Group purchase transactions by Location, calculate total spent and item price listings
   const supplierAnalysis = rangeTransactions
     .filter((t) => t.type === "masuk" && t.location)
     .reduce((acc, t) => {
@@ -110,7 +100,6 @@ export default function Reports({ transactions, items, formatRupiah }) {
 
   return (
     <div>
-      {/* Print only header */}
       <div className="print-only-header">
         <h1>LAPORAN STATISTIK MWSTORE</h1>
         <p>
@@ -120,7 +109,6 @@ export default function Reports({ transactions, items, formatRupiah }) {
         <p>Dicetak Pada: {new Date().toLocaleDateString("id-ID")} - Kasir Toko</p>
       </div>
 
-      {/* Screen controls */}
       <div className="page-header-controls">
         <div className="btn-group">
           <button
@@ -138,11 +126,10 @@ export default function Reports({ transactions, items, formatRupiah }) {
         </div>
 
         <button className="btn btn-secondary" onClick={triggerPrint}>
-           Cetak / Ekspor PDF Laporan
+          Cetak / Ekspor PDF Laporan
         </button>
       </div>
 
-      {/* Financial Overview Boxes */}
       <div className="content-card">
         <div className="card-title">
           Ikhtisar Keuangan ({reportType === "weekly" ? "Mingguan" : "Bulanan"})
@@ -219,9 +206,7 @@ export default function Reports({ transactions, items, formatRupiah }) {
         </div>
       </div>
 
-      {/* Grid Bottom: Top Selling and Supplier Analysis */}
       <div className="dashboard-grid">
-        {/* Top Selling Sembako */}
         <div className="content-card">
           <div className="card-title">Barang Terlaris (Top 5)</div>
           
@@ -275,7 +260,6 @@ export default function Reports({ transactions, items, formatRupiah }) {
           </div>
         </div>
 
-        {/* Supplier and Purchase Location Spend analysis */}
         <div className="content-card">
           <div className="card-title">Analisis Toko Supplier & Harga</div>
           
@@ -297,7 +281,7 @@ export default function Reports({ transactions, items, formatRupiah }) {
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, marginBottom: "8px" }}>
-                    <span> {sup.name}</span>
+                    <span>{sup.name}</span>
                     <span style={{ color: "var(--primary)" }}>{formatRupiah(sup.totalSpent)}</span>
                   </div>
                   
@@ -306,7 +290,7 @@ export default function Reports({ transactions, items, formatRupiah }) {
                     <ul style={{ listStyleType: "none", paddingLeft: "8px" }}>
                       {Object.entries(sup.itemsBought).map(([iName, info]) => (
                         <li key={iName} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
-                          <span> {iName}</span>
+                          <span>{iName}</span>
                           <strong>{formatRupiah(info.minPrice)}</strong>
                         </li>
                       ))}

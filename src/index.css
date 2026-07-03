@@ -11,7 +11,7 @@
   --radius-lg: 16px;
   --radius-xl: 24px;
   
-  /* Light Theme Variables */
+  
   --bg-primary: #f3f4f6;
   --bg-secondary: #ffffff;
   --bg-sidebar: #0f172a;
@@ -92,7 +92,7 @@
   --glass-border: rgba(36, 48, 73, 0.6);
 }
 
-/* Base Styles */
+
 * {
   margin: 0;
   padding: 0;
@@ -109,7 +109,7 @@ body {
   transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
-/* App Container & Sidebar Layout */
+
 .app-container {
   display: flex;
   min-height: 100vh;
@@ -117,7 +117,7 @@ body {
   overflow: hidden;
 }
 
-/* Sidebar Styling */
+
 .sidebar {
   width: 260px;
   background-color: var(--bg-sidebar);
@@ -195,7 +195,7 @@ body {
   gap: 16px;
 }
 
-/* Theme Toggle inside Sidebar */
+
 .theme-toggle-btn {
   display: flex;
   align-items: center;
@@ -216,7 +216,7 @@ body {
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* Main Content Area */
+
 .main-content {
   flex-grow: 1;
   display: flex;
@@ -226,7 +226,7 @@ body {
   overflow-x: hidden;
 }
 
-/* Top Bar */
+
 .top-bar {
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
@@ -263,13 +263,13 @@ body {
   gap: 6px;
 }
 
-/* Page Content View */
+
 .page-content {
   padding: 32px;
   flex-grow: 1;
 }
 
-/* Stat Grid (Dashboard Cards) */
+
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -342,7 +342,7 @@ body {
   color: var(--text-muted);
 }
 
-/* Dashboard Bottom Grid (Charts & Low Stock Alerts) */
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -355,7 +355,7 @@ body {
   }
 }
 
-/* General Layout Card */
+
 .content-card {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
@@ -376,7 +376,7 @@ body {
   align-items: center;
 }
 
-/* Table Design */
+
 .table-container {
   overflow-x: auto;
   width: 100%;
@@ -416,7 +416,7 @@ body {
   background-color: rgba(255, 255, 255, 0.02);
 }
 
-/* Badges */
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -434,7 +434,7 @@ body {
 .badge.danger { background-color: var(--danger-light); color: var(--danger-text); }
 .badge.info { background-color: var(--info-light); color: var(--info-text); }
 
-/* Buttons */
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -521,7 +521,7 @@ body {
   gap: 8px;
 }
 
-/* Forms & Inputs */
+
 .form-group {
   margin-bottom: 16px;
   display: flex;
@@ -564,7 +564,7 @@ body {
   }
 }
 
-/* Modals */
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -644,7 +644,7 @@ body {
   background-color: rgba(255, 255, 255, 0.01);
 }
 
-/* Animations */
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -655,7 +655,7 @@ body {
   to { transform: translateY(0); opacity: 1; }
 }
 
-/* Page Header Controls (Search, Filters, Action buttons) */
+
 .page-header-controls {
   display: flex;
   justify-content: space-between;
@@ -700,7 +700,7 @@ body {
   width: 160px;
 }
 
-/* SVG Line Chart Style */
+
 .chart-container {
   position: relative;
   width: 100%;
@@ -723,7 +723,7 @@ body {
   box-shadow: var(--shadow-md);
 }
 
-/* Category Pie representation inside CSS */
+
 .category-progress-list {
   display: flex;
   flex-direction: column;
@@ -758,7 +758,7 @@ body {
   transition: width 0.5s ease-out;
 }
 
-/* Supplier Price Table in Modals */
+
 .supplier-history-list {
   display: flex;
   flex-direction: column;
@@ -802,7 +802,7 @@ body {
   color: var(--text-secondary);
 }
 
-/* Debt details payment history */
+
 .payment-history-timeline {
   margin-top: 16px;
   border-left: 2px solid var(--border-color);
@@ -842,7 +842,7 @@ body {
   color: var(--success);
 }
 
-/* Statistics and Reports View Layout */
+
 .report-header-summary {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -882,7 +882,7 @@ body {
   font-weight: 700;
 }
 
-/* Print CSS Configurations */
+
 @media print {
   body {
     background-color: #ffffff !important;

@@ -1,6 +1,4 @@
-
 export default function Dashboard({ items, transactions, debts, formatRupiah, setActiveTab }) {
-  // Calculations
   const totalItemsCount = items.length;
   
   const totalStockValue = items.reduce((acc, item) => {
@@ -19,10 +17,8 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
     return acc;
   }, 0);
 
-  // Low stock warning items
   const lowStockItems = items.filter((item) => item.stock <= item.minStock);
 
-  // Category counts
   const categoryData = items.reduce((acc, item) => {
     acc[item.category] = (acc[item.category] || 0) + item.stock;
     return acc;
@@ -30,38 +26,30 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
 
   const maxStock = Math.max(...Object.values(categoryData), 1);
 
-  // Get financial stats for past 7 days to build a beautiful custom SVG trend graph
-  const getLast7DaysStats = () => {
-    const stats = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split("T")[0];
-      
-      // Calculate sales and purchases for this date
-      const daySales = transactions
-        .filter(t => {
-          const tDateStr = t.date ? (typeof t.date === 'string' ? t.date.split("T")[0] : new Date(t.date).toISOString().split("T")[0]) : '';
-          return tDateStr === dateStr && t.type === "keluar";
-        })
-        .reduce((sum, t) => sum + Number(t.total), 0);
+  const chartData = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split("T")[0];
+    
+    const daySales = transactions
+      .filter(t => {
+        const tDateStr = t.date ? (typeof t.date === 'string' ? t.date.split("T")[0] : new Date(t.date).toISOString().split("T")[0]) : '';
+        return tDateStr === dateStr && t.type === "keluar";
+      })
+      .reduce((sum, t) => sum + Number(t.total), 0);
 
-      const dayPurchases = transactions
-        .filter(t => {
-          const tDateStr = t.date ? (typeof t.date === 'string' ? t.date.split("T")[0] : new Date(t.date).toISOString().split("T")[0]) : '';
-          return tDateStr === dateStr && (t.type === "masuk" || t.type === "penyesuaian_tambah");
-        })
-        .reduce((sum, t) => sum + Number(t.total), 0);
+    const dayPurchases = transactions
+      .filter(t => {
+        const tDateStr = t.date ? (typeof t.date === 'string' ? t.date.split("T")[0] : new Date(t.date).toISOString().split("T")[0]) : '';
+        return tDateStr === dateStr && (t.type === "masuk" || t.type === "penyesuaian_tambah");
+      })
+      .reduce((sum, t) => sum + Number(t.total), 0);
 
-      const label = d.toLocaleDateString("id-ID", { weekday: "short" });
-      stats.push({ date: dateStr, label, sales: daySales, purchases: dayPurchases });
-    }
-    return stats;
-  };
-
-  const chartData = getLast7DaysStats();
+    const label = d.toLocaleDateString("id-ID", { weekday: "short" });
+    chartData.push({ date: dateStr, label, sales: daySales, purchases: dayPurchases });
+  }
   
-  // Calculate SVG Coordinates for line graphs
   const maxVal = Math.max(...chartData.flatMap(d => [d.sales, d.purchases]), 100000);
   const paddingX = 40;
   const paddingY = 20;
@@ -76,7 +64,6 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
 
   return (
     <div>
-      {/* KPI Cards Grid */}
       <div className="stat-grid">
         <div className="stat-card">
           <div className="stat-header">
@@ -123,9 +110,7 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
         </div>
       </div>
 
-      {/* Charts and Low Stock Details */}
       <div className="dashboard-grid">
-        {/* SVG Sales Trend Chart */}
         <div className="content-card">
           <div className="card-title">
             <span>Tren Transaksi 7 Hari Terakhir</span>
@@ -143,12 +128,10 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
           
           <div className="chart-container">
             <svg className="chart-svg" viewBox={`0 0 ${width} ${height}`}>
-              {/* Grid Lines */}
               <line x1={paddingX} y1={paddingY} x2={width - paddingX} y2={paddingY} stroke="var(--border-color)" strokeWidth="0.5" strokeDasharray="4 4" />
-              $<line x1={paddingX} y1={(height - paddingY) / 2 + paddingY / 2} x2={width - paddingX} y2={(height - paddingY) / 2 + paddingY / 2} stroke="var(--border-color)" strokeWidth="0.5" strokeDasharray="4 4" />
+              <line x1={paddingX} y1={(height - paddingY) / 2 + paddingY / 2} x2={width - paddingX} y2={(height - paddingY) / 2 + paddingY / 2} stroke="var(--border-color)" strokeWidth="0.5" strokeDasharray="4 4" />
               <line x1={paddingX} y1={height - paddingY} x2={width - paddingX} y2={height - paddingY} stroke="var(--border-color)" strokeWidth="1" />
               
-              {/* Purchases Area/Line */}
               <polyline
                 fill="none"
                 stroke="#6366f1"
@@ -158,7 +141,6 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
                 points={purchasePoints}
               />
 
-              {/* Sales Area/Line */}
               <polyline
                 fill="none"
                 stroke="#10b981"
@@ -168,18 +150,14 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
                 points={salesPoints}
               />
 
-              {/* Data points and labels */}
               {chartData.map((d, i) => (
                 <g key={i}>
-                  {/* Sales Points */}
                   {d.sales > 0 && (
                     <circle cx={getX(i)} cy={getY(d.sales)} r="4" fill="#10b981" />
                   )}
-                  {/* Purchase Points */}
                   {d.purchases > 0 && (
                     <circle cx={getX(i)} cy={getY(d.purchases)} r="4" fill="#6366f1" />
                   )}
-                  {/* Day Label */}
                   <text
                     x={getX(i)}
                     y={height - 4}
@@ -193,7 +171,6 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
                 </g>
               ))}
 
-              {/* Left Y-axis labels */}
               <text x={2} y={paddingY + 4} fill="var(--text-muted)" fontSize="8px">{formatRupiah(maxVal)}</text>
               <text x={2} y={(height - paddingY) / 2 + paddingY / 2 + 4} fill="var(--text-muted)" fontSize="8px">{formatRupiah(maxVal / 2)}</text>
               <text x={2} y={height - paddingY + 4} fill="var(--text-muted)" fontSize="8px">Rp 0</text>
@@ -201,7 +178,6 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
           </div>
         </div>
 
-        {/* Low Stock Panel */}
         <div className="content-card" style={{ display: "flex", flexDirection: "column" }}>
           <div className="card-title">
             Peringatan Stok Tipis
@@ -211,7 +187,7 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
           <div style={{ flexGrow: 1, overflowY: "auto", maxHeight: "190px", display: "flex", flexDirection: "column", gap: "10px" }}>
             {lowStockItems.length === 0 ? (
               <div style={{ textAlign: "center", color: "var(--text-muted)", padding: "20px 0", fontSize: "13px" }}>
-                 Semua stok sembako aman!
+                Semua stok sembako aman!
               </div>
             ) : (
               lowStockItems.map((item) => (
@@ -248,7 +224,6 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
         </div>
       </div>
 
-      {/* Category List & Quick Activities */}
       <div style={{ marginTop: "24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }} className="dashboard-grid">
         <div className="content-card">
           <div className="card-title">Sebaran Kategori Stok</div>

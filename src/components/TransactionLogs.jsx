@@ -6,12 +6,11 @@ export default function TransactionLogs({ transactions, formatRupiah }) {
     const clean = typeof dateStr === 'string' ? dateStr.split("T")[0] : new Date(dateStr).toISOString().split("T")[0];
     const parts = clean.split("-");
     if (parts.length !== 3) return clean;
-    return `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
   };
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("semua");
 
-  // Filters logic
   const filteredTxs = transactions.filter((tx) => {
     const matchesSearch =
       tx.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -33,7 +32,6 @@ export default function TransactionLogs({ transactions, formatRupiah }) {
 
   return (
     <div>
-      {/* Search and Filters */}
       <div className="page-header-controls">
         <div className="search-filter-box">
           <div className="search-input-wrapper">
@@ -64,7 +62,6 @@ export default function TransactionLogs({ transactions, formatRupiah }) {
         </div>
       </div>
 
-      {/* Logs Table */}
       <div className="content-card">
         <div className="card-title">
           Catatan Transaksi Persediaan Sembako
@@ -124,11 +121,11 @@ export default function TransactionLogs({ transactions, formatRupiah }) {
                     </td>
                     <td>
                       {tx.type === "masuk" && (
-                        <span> {tx.location || "-"}</span>
+                        <span>{tx.location || "-"}</span>
                       )}
                       {tx.type === "keluar" && (
                         <div>
-                          <span> {tx.customer || "Umum"}</span>
+                          <span>{tx.customer || "Umum"}</span>
                           {tx.paymentStatus && (
                             <span
                               className={`badge ${tx.paymentStatus === "lunas" ? "success" : "warning"}`}
@@ -140,7 +137,7 @@ export default function TransactionLogs({ transactions, formatRupiah }) {
                         </div>
                       )}
                       {tx.type === "bayar_hutang" && (
-                        <span> Debitur: {tx.customer}</span>
+                        <span>Debitur: {tx.customer}</span>
                       )}
                     </td>
                     <td>

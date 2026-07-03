@@ -1,49 +1,61 @@
 import express from 'express';
 import mysql from 'mysql2/promise';
 import cors from 'cors';
+import crypto from 'crypto';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Database connection checker middleware
+const PORT = process.env.PORT || 5000;
+const SECRET_KEY = process.env.JWT_SECRET || 'mwstore-super-secret-key-12345';
+
+const dbConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'mwstore',
+  port: Number(process.env.DB_PORT) || 3306,
+};
+
+let pool;
+
 app.use('/api', (req, res, next) => {
+  if (req.path === '/login') {
+    return next();
+  }
   if (!pool && req.path !== '/reset') {
     return res.status(503).json({ error: "Layanan database tidak tersedia. Pastikan server MySQL berjalan." });
   }
   next();
 });
 
-const PORT = 5000;
-
-// Configuration for local MySQL (XAMPP default settings)
-const dbConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: '', // empty password for XAMPP default
-};
-
-let pool;
-
 async function initDB() {
   try {
-    // 1. First connect without database to ensure it exists
-    const connection = await mysql.createConnection(dbConfig);
-    await connection.query('CREATE DATABASE IF NOT EXISTS mwstore');
+    const connection = await mysql.createConnection({
+      host: dbConfig.host,
+      user: dbConfig.user,
+      password: dbConfig.password,
+      port: dbConfig.port
+    });
+    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
     await connection.end();
 
-    // 2. Re-create connection pool with database specified
     pool = mysql.createPool({
       ...dbConfig,
-      database: 'mwstore',
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0
     });
 
-    console.log('Connected to MySQL database "mwstore"');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(50) PRIMARY KEY,
+        username VARCHAR(50) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL
+      )
+    `);
 
-    // 3. Create Tables
     await pool.query(`
       CREATE TABLE IF NOT EXISTS items (
         id VARCHAR(50) PRIMARY KEY,
@@ -115,10 +127,17 @@ async function initDB() {
       )
     `);
 
-    // 4. Seed Data if database is empty
+    const [userRows] = await pool.query('SELECT COUNT(*) as count FROM users');
+    if (userRows[0].count === 0) {
+      const adminPassHash = crypto.createHash('sha256').update('admin123').digest('hex');
+      await pool.query(
+        'INSERT INTO users (id, username, password) VALUES (?, ?, ?)',
+        ['user-admin', 'admin', adminPassHash]
+      );
+    }
+
     const [rows] = await pool.query('SELECT COUNT(*) as count FROM items');
     if (rows[0].count === 0) {
-      console.log('Database is empty. Seeding initial data...');
       await seedInitialData();
     }
   } catch (error) {
@@ -163,21 +182,18 @@ async function seedInitialData() {
     { id: "contact-5", name: "Toko MP Harian", phone: "081234560005", address: "Ruko MP Harian Baru", type: "supplier" }
   ];
 
-  // Insert Items
   for (const item of initialItems) {
     await pool.query(
       'INSERT INTO items (id, sku, name, category, stock, minStock, unit, purchasePrice, sellingPrice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [item.id, item.sku, item.name, item.category, item.stock, item.minStock, item.unit, item.purchasePrice, item.sellingPrice]
     );
 
-    // Insert to purchase history
     await pool.query(
       'INSERT INTO purchase_history (id, itemId, date, price, location, qty) VALUES (?, ?, ?, ?, ?, ?)',
       [`ph-${item.id.split('-')[1]}`, item.id, '2026-07-02', item.purchasePrice, item.sku.startsWith('GL') && item.sku.endsWith('002') ? 'Toko Aan Guci' : (item.sku.startsWith('CP') && (item.sku.endsWith('002') || item.sku.endsWith('003')) ? 'Toko Indah Plastik' : (item.sku.startsWith('CP') || item.sku.startsWith('TP') && (item.sku.endsWith('003') || item.sku.endsWith('004')) ? 'Toko Aroma' : (item.sku.startsWith('SS') ? 'Toko MP Harian' : 'Toko Sumber Harian'))), item.stock]
     );
   }
 
-  // Insert Transactions
   for (const tx of initialTransactions) {
     await pool.query(
       'INSERT INTO transactions (id, date, type, itemId, itemName, qty, price, total, location, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -185,7 +201,6 @@ async function seedInitialData() {
     );
   }
 
-  // Insert Contacts
   for (const contact of initialContacts) {
     await pool.query(
       'INSERT INTO contacts (id, name, phone, address, type) VALUES (?, ?, ?, ?, ?)',
@@ -194,13 +209,62 @@ async function seedInitialData() {
   }
 }
 
-// --- API ENDPOINTS ---
+function generateToken(username) {
+  const expiry = Date.now() + 24 * 60 * 60 * 1000;
+  const data = `${username}:${expiry}`;
+  const signature = crypto.createHmac('sha256', SECRET_KEY).update(data).digest('hex');
+  return Buffer.from(`${data}:${signature}`).toString('base64');
+}
 
-// 1. ITEMS CRUD
-app.get('/api/items', async (req, res) => {
+function verifyToken(token) {
+  try {
+    const decoded = Buffer.from(token, 'base64').toString('utf8');
+    const [username, expiryStr, signature] = decoded.split(':');
+    const expiry = parseInt(expiryStr, 10);
+    if (Date.now() > expiry) return null;
+    const data = `${username}:${expiry}`;
+    const expectedSignature = crypto.createHmac('sha256', SECRET_KEY).update(data).digest('hex');
+    if (signature === expectedSignature) return { username };
+  } catch (e) {}
+  return null;
+}
+
+const authenticate = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) return res.status(401).json({ error: 'Akses ditolak. Token tidak disediakan.' });
+  const token = authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Akses ditolak. Format token salah.' });
+  const user = verifyToken(token);
+  if (!user) return res.status(403).json({ error: 'Akses ditolak. Token tidak valid.' });
+  req.user = user;
+  next();
+};
+
+app.post('/api/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username dan password wajib diisi.' });
+    }
+    const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+    const [rows] = await pool.query('SELECT * FROM users WHERE username = ? AND password = ?', [username, hashedPassword]);
+    if (rows.length === 0) {
+      return res.status(401).json({ error: 'Username atau password salah.' });
+    }
+    const token = generateToken(username);
+    res.json({ token });
+  } catch (error) {
+    res.status(500).json({ error: 'Terjadi kesalahan pada server.' });
+  }
+});
+
+app.get('/api/verify-token', authenticate, (req, res) => {
+  res.json({ valid: true, username: req.user.username });
+});
+
+app.get('/api/items', authenticate, async (req, res) => {
   try {
     const [items] = await pool.query('SELECT * FROM items');
-    // Fetch purchase history for each item
     for (const item of items) {
       const [history] = await pool.query('SELECT * FROM purchase_history WHERE itemId = ?', [item.id]);
       item.purchaseHistory = history;
@@ -212,30 +276,24 @@ app.get('/api/items', async (req, res) => {
   }
 });
 
-app.post('/api/items', async (req, res) => {
+app.post('/api/items', authenticate, async (req, res) => {
   try {
     const { sku, name, category, stock, minStock, unit, purchasePrice, sellingPrice, purchaseLocation } = req.body;
-    
     if (!sku || !name || !unit) {
       return res.status(400).json({ error: "Kode barang (SKU), nama, dan satuan wajib diisi." });
     }
-    
     const numStock = Number(stock) || 0;
     const numMinStock = Number(minStock) || 0;
     const numPurchase = Number(purchasePrice) || 0;
     const numSelling = Number(sellingPrice) || 0;
-    
     if (numStock < 0 || numMinStock < 0 || numPurchase < 0 || numSelling < 0) {
       return res.status(400).json({ error: "Stok, stok minimum, harga beli, dan harga jual tidak boleh bernilai negatif." });
     }
-
     const itemId = `item-${Date.now()}`;
-    
     await pool.query(
       'INSERT INTO items (id, sku, name, category, stock, minStock, unit, purchasePrice, sellingPrice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [itemId, sku, name, category, numStock, numMinStock, unit, numPurchase, numSelling]
     );
-
     if (numPurchase > 0) {
       const phId = `ph-${Date.now()}`;
       const today = new Date().toISOString().split('T')[0];
@@ -244,8 +302,6 @@ app.post('/api/items', async (req, res) => {
         [phId, itemId, today, numPurchase, purchaseLocation || 'Stok Awal', numStock]
       );
     }
-
-    // Return the inserted item with its purchase history
     const [history] = await pool.query('SELECT * FROM purchase_history WHERE itemId = ?', [itemId]);
     res.json({
       id: itemId, sku, name, category, stock: numStock, minStock: numMinStock, unit, purchasePrice: numPurchase, sellingPrice: numSelling,
@@ -260,29 +316,24 @@ app.post('/api/items', async (req, res) => {
   }
 });
 
-app.put('/api/items/:id', async (req, res) => {
+app.put('/api/items/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, category, stock, minStock, unit, purchasePrice, sellingPrice } = req.body;
-    
     if (!name || !unit) {
       return res.status(400).json({ error: "Nama dan satuan wajib diisi." });
     }
-    
     const numStock = Number(stock) || 0;
     const numMinStock = Number(minStock) || 0;
     const numPurchase = Number(purchasePrice) || 0;
     const numSelling = Number(sellingPrice) || 0;
-    
     if (numStock < 0 || numMinStock < 0 || numPurchase < 0 || numSelling < 0) {
       return res.status(400).json({ error: "Stok, stok minimum, harga beli, dan harga jual tidak boleh bernilai negatif." });
     }
-    
     await pool.query(
       'UPDATE items SET name = ?, category = ?, stock = ?, minStock = ?, unit = ?, purchasePrice = ?, sellingPrice = ? WHERE id = ?',
       [name, category, numStock, numMinStock, unit, numPurchase, numSelling, id]
     );
-
     res.json({ message: 'Item updated successfully' });
   } catch (error) {
     console.error("Error updating item:", error);
@@ -290,7 +341,7 @@ app.put('/api/items/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/items/:id', async (req, res) => {
+app.delete('/api/items/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     await pool.query('DELETE FROM items WHERE id = ?', [id]);
@@ -301,8 +352,7 @@ app.delete('/api/items/:id', async (req, res) => {
   }
 });
 
-// 2. TRANSACTIONS API
-app.get('/api/transactions', async (req, res) => {
+app.get('/api/transactions', authenticate, async (req, res) => {
   try {
     const [transactions] = await pool.query('SELECT * FROM transactions ORDER BY date DESC, id DESC');
     res.json(transactions);
@@ -312,15 +362,13 @@ app.get('/api/transactions', async (req, res) => {
   }
 });
 
-// 3. RESTOCK (Stock In)
-app.post('/api/transactions/restock', async (req, res) => {
+app.post('/api/transactions/restock', authenticate, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const { itemId, qty, purchasePrice, location, notes, date } = req.body;
     const quantity = Number(qty);
     const price = Number(purchasePrice);
-    
     if (isNaN(quantity) || quantity <= 0) {
       return res.status(400).json({ error: "Kuantitas restock harus lebih besar dari 0." });
     }
@@ -330,35 +378,25 @@ app.post('/api/transactions/restock', async (req, res) => {
     if (!itemId || !location || !date) {
       return res.status(400).json({ error: "Barang, supplier/lokasi, dan tanggal wajib diisi." });
     }
-
     const total = quantity * price;
-
-    // Get item details
     const [itemRows] = await conn.query('SELECT * FROM items WHERE id = ?', [itemId]);
     if (itemRows.length === 0) throw new Error('Item tidak ditemukan.');
     const item = itemRows[0];
-
-    // 1. Insert transaction
     const txId = `tx-${Date.now()}`;
     await conn.query(
       'INSERT INTO transactions (id, date, type, itemId, itemName, qty, price, total, location, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [txId, date, 'masuk', itemId, item.name, quantity, price, total, location, notes]
     );
-
-    // 2. Update stock & purchase price
     const newStock = Number(item.stock) + quantity;
     await conn.query(
       'UPDATE items SET stock = ?, purchasePrice = ? WHERE id = ?',
       [newStock, price, itemId]
     );
-
-    // 3. Insert purchase history
     const phId = `ph-${Date.now()}`;
     await conn.query(
       'INSERT INTO purchase_history (id, itemId, date, price, location, qty) VALUES (?, ?, ?, ?, ?, ?)',
       [phId, itemId, date, price, location, quantity]
     );
-
     await conn.commit();
     res.json({ message: 'Restock recorded successfully' });
   } catch (error) {
@@ -370,15 +408,16 @@ app.post('/api/transactions/restock', async (req, res) => {
   }
 });
 
-// 4. SALES (Stock Out) - Multi-Item Cart Support
-app.post('/api/transactions/sale', async (req, res) => {
+app.post('/api/transactions/sale', authenticate, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const { cart = [], customer, paymentStatus, amountPaid, notes, date } = req.body;
+    let { cart, customer, paymentStatus, amountPaid, notes, date } = req.body;
+    if (!cart && req.body.itemId) {
+      cart = [{ itemId: req.body.itemId, qty: Number(req.body.qty), price: Number(req.body.sellingPrice) }];
+    }
     const paid = Number(amountPaid || 0);
-
-    if (cart.length === 0) {
+    if (!cart || cart.length === 0) {
       return res.status(400).json({ error: "Keranjang belanja kosong!" });
     }
     if (isNaN(paid) || paid < 0) {
@@ -387,8 +426,6 @@ app.post('/api/transactions/sale', async (req, res) => {
     if (!date) {
       return res.status(400).json({ error: "Tanggal transaksi wajib diisi." });
     }
-
-    // 1. Validate and fetch item details
     const itemsToUpdate = [];
     for (const cartItem of cart) {
       if (isNaN(Number(cartItem.qty)) || Number(cartItem.qty) <= 0) {
@@ -405,32 +442,22 @@ app.post('/api/transactions/sale', async (req, res) => {
       }
       itemsToUpdate.push({ ...item, qtyToDeduct: cartItem.qty });
     }
-
-    // 2. Reduce stock levels
     for (const item of itemsToUpdate) {
       const newStock = item.stock - item.qtyToDeduct;
       await conn.query('UPDATE items SET stock = ? WHERE id = ?', [newStock, item.id]);
     }
-
     const invoiceId = `INV-${Date.now()}`;
     const timestamp = Date.now();
-
-    // 3. Calculate total invoice value
     const totalInvoiceVal = cart.reduce((sum, ci) => sum + ci.qty * ci.price, 0);
     const totalDebt = paymentStatus === "belum_lunas" ? Math.max(0, totalInvoiceVal - paid) : 0;
-
-    // 4. Create transaction records for each cart item
     const newTxs = [];
     for (let idx = 0; idx < cart.length; idx++) {
       const cartItem = cart[idx];
       const targetItem = itemsToUpdate.find((it) => it.id === cartItem.itemId);
       const itemTotal = cartItem.qty * cartItem.price;
-
-      // Distribute payment status and initial paid amount proportionally
       const shareRatio = totalInvoiceVal > 0 ? itemTotal / totalInvoiceVal : 0;
       const itemPaid = paymentStatus === "lunas" ? itemTotal : Math.round(paid * shareRatio);
       const itemDebt = paymentStatus === "lunas" ? 0 : Math.max(0, itemTotal - itemPaid);
-
       const txId = `tx-${timestamp}-${idx}`;
       await conn.query(
         'INSERT INTO transactions (id, invoiceId, date, type, itemId, itemName, qty, price, total, customer, paymentStatus, amountPaid, debt, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -438,8 +465,6 @@ app.post('/api/transactions/sale', async (req, res) => {
       );
       newTxs.push({ id: txId });
     }
-
-    // 5. If partial payment, spawn a single debt tracker profile for this invoice
     if (paymentStatus === "belum_lunas" && totalDebt > 0) {
       const debtId = `debt-${Date.now()}`;
       const paymentsJson = JSON.stringify([{ date, amount: paid }]);
@@ -448,9 +473,8 @@ app.post('/api/transactions/sale', async (req, res) => {
         [debtId, invoiceId, newTxs[0].id, date, customer || 'Umum', totalInvoiceVal, paid, totalDebt, paymentsJson, 'belum_lunas']
       );
     }
-
     await conn.commit();
-    res.json({ message: 'Transaksi penjualan berhasil disimpan' });
+    res.json({ message: 'Transaksi penjualan berhasil disimpan', invoiceId });
   } catch (error) {
     await conn.rollback();
     console.error("Error at sale transaction:", error);
@@ -460,11 +484,9 @@ app.post('/api/transactions/sale', async (req, res) => {
   }
 });
 
-// 5. DEBTS API
-app.get('/api/debts', async (req, res) => {
+app.get('/api/debts', authenticate, async (req, res) => {
   try {
     const [debts] = await pool.query('SELECT * FROM debts');
-    // Parse payments JSON string
     for (const debt of debts) {
       try {
         debt.payments = JSON.parse(debt.payments);
@@ -479,58 +501,43 @@ app.get('/api/debts', async (req, res) => {
   }
 });
 
-// Record debt payment
-app.post('/api/debts/:id/pay', async (req, res) => {
+app.post('/api/debts/:id/pay', authenticate, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const { id } = req.params;
     const { amount, date, notes } = req.body;
     const payAmt = Number(amount);
-
     if (isNaN(payAmt) || payAmt <= 0) {
       return res.status(400).json({ error: "Jumlah pembayaran cicilan harus lebih besar dari 0." });
     }
-
-    // Get debt
     const [debtRows] = await conn.query('SELECT * FROM debts WHERE id = ?', [id]);
     if (debtRows.length === 0) {
       return res.status(404).json({ error: 'Piutang tidak ditemukan' });
     }
     const debt = debtRows[0];
-
     if (payAmt > Number(debt.remaining)) {
       return res.status(400).json({ error: `Jumlah pembayaran melebihi sisa piutang! Sisa piutang adalah ${debt.remaining}.` });
     }
-
     let payments = [];
     try {
       payments = JSON.parse(debt.payments);
     } catch {
       payments = [];
     }
-
     const newPaid = Number(debt.paid) + payAmt;
     const newRemaining = Math.max(0, Number(debt.total) - newPaid);
     const newStatus = newRemaining <= 0 ? 'lunas' : 'belum_lunas';
-
     payments.push({ date, amount: payAmt });
-
-    // 1. Update debt
     await conn.query(
       'UPDATE debts SET paid = ?, remaining = ?, status = ?, payments = ? WHERE id = ?',
       [newPaid, newRemaining, newStatus, JSON.stringify(payments), id]
     );
-
-    // 2. Add payment transaction log
     const txId = `tx-pay-${Date.now()}`;
     await conn.query(
       'INSERT INTO transactions (id, date, type, itemName, qty, price, total, customer, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [txId, date, 'bayar_hutang', `Cicilan Piutang - ${debt.customer}`, 1, payAmt, payAmt, debt.customer, notes || 'Pembayaran cicilan piutang']
     );
-
-    // 3. Update original transaction's paid and debt amount
-    // Update the original sales transaction records in the same invoice proportionally
     const [txRows] = await conn.query('SELECT * FROM transactions WHERE invoiceId = ? OR id = ?', [debt.invoiceId, debt.txId]);
     for (const tx of txRows) {
       const percentagePaid = newPaid / debt.total;
@@ -541,7 +548,6 @@ app.post('/api/debts/:id/pay', async (req, res) => {
         [txAmountPaid, txDebt, newStatus, tx.id]
       );
     }
-
     await conn.commit();
     res.json({ message: 'Pembayaran cicilan piutang berhasil disimpan' });
   } catch (error) {
@@ -553,8 +559,7 @@ app.post('/api/debts/:id/pay', async (req, res) => {
   }
 });
 
-// 6. CONTACTS API
-app.get('/api/contacts', async (req, res) => {
+app.get('/api/contacts', authenticate, async (req, res) => {
   try {
     const [contacts] = await pool.query('SELECT * FROM contacts');
     res.json(contacts);
@@ -564,7 +569,7 @@ app.get('/api/contacts', async (req, res) => {
   }
 });
 
-app.post('/api/contacts', async (req, res) => {
+app.post('/api/contacts', authenticate, async (req, res) => {
   try {
     const { name, phone, address, type } = req.body;
     if (!name || !type) {
@@ -582,7 +587,7 @@ app.post('/api/contacts', async (req, res) => {
   }
 });
 
-app.put('/api/contacts/:id', async (req, res) => {
+app.put('/api/contacts/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, phone, address, type } = req.body;
@@ -600,7 +605,7 @@ app.put('/api/contacts/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/contacts/:id', async (req, res) => {
+app.delete('/api/contacts/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     await pool.query('DELETE FROM contacts WHERE id = ?', [id]);
@@ -611,8 +616,7 @@ app.delete('/api/contacts/:id', async (req, res) => {
   }
 });
 
-// 7. WIPE & RESET DATABASE
-app.post('/api/reset', async (req, res) => {
+app.post('/api/reset', authenticate, async (req, res) => {
   try {
     await pool.query('SET FOREIGN_KEY_CHECKS = 0');
     await pool.query('DROP TABLE IF EXISTS purchase_history');
@@ -620,9 +624,8 @@ app.post('/api/reset', async (req, res) => {
     await pool.query('DROP TABLE IF EXISTS transactions');
     await pool.query('DROP TABLE IF EXISTS contacts');
     await pool.query('DROP TABLE IF EXISTS debts');
+    await pool.query('DROP TABLE IF EXISTS users');
     await pool.query('SET FOREIGN_KEY_CHECKS = 1');
-    
-    // Re-initialize and seed
     await initDB();
     res.json({ message: 'Database reset successfully' });
   } catch (error) {
@@ -631,9 +634,8 @@ app.post('/api/reset', async (req, res) => {
   }
 });
 
-// Start initialization
 initDB().then(() => {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT}`);
   });
 });

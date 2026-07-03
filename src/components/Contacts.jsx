@@ -9,7 +9,7 @@ export default function Contacts({
   debts = [],
   formatRupiah
 }) {
-  const [activeSubTab, setActiveSubTab] = useState("customer"); // 'customer' or 'supplier'
+  const [activeSubTab, setActiveSubTab] = useState("customer");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -23,7 +23,6 @@ export default function Contacts({
 
   const [editingContact, setEditingContact] = useState(null);
 
-  // Filter contacts by type and search term
   const filteredContacts = contacts.filter((c) => {
     const isCorrectType = c.type === activeSubTab;
     const matchesSearch =
@@ -33,7 +32,6 @@ export default function Contacts({
     return isCorrectType && matchesSearch;
   });
 
-  // Calculate statistics for a contact
   const getContactStats = (contact) => {
     const normalizedContactName = contact.name.trim().toLowerCase();
     
@@ -51,7 +49,6 @@ export default function Contacts({
       const totalOrders = customerTxs.length;
       const totalAmount = customerTxs.reduce((sum, t) => sum + t.total, 0);
 
-      // Calculate outstanding debt from debts
       const customerDebts = debts.filter(
         (d) => d.customer && d.customer.trim().toLowerCase() === normalizedContactName && d.status === "belum_lunas"
       );
@@ -67,7 +64,6 @@ export default function Contacts({
       alert("Nama wajib diisi.");
       return;
     }
-    // Check duplication
     if (
       contacts.some(
         (c) =>
@@ -129,7 +125,6 @@ export default function Contacts({
 
   return (
     <div>
-      {/* Sub Tabs */}
       <div style={{ display: "flex", gap: "12px", marginBottom: "24px" }}>
         <button
           className={`btn ${activeSubTab === "customer" ? "btn-primary" : "btn-secondary"}`}
@@ -139,7 +134,7 @@ export default function Contacts({
             setSearchTerm("");
           }}
         >
-           Daftar Pelanggan Tetap (Customer)
+          Daftar Pelanggan Tetap (Customer)
         </button>
         <button
           className={`btn ${activeSubTab === "supplier" ? "btn-primary" : "btn-secondary"}`}
@@ -149,11 +144,10 @@ export default function Contacts({
             setSearchTerm("");
           }}
         >
-           Daftar Agen / Supplier (Pemasok)
+          Daftar Agen / Supplier (Pemasok)
         </button>
       </div>
 
-      {/* Controls */}
       <div className="page-header-controls">
         <div className="search-filter-box">
           <div className="search-input-wrapper">
@@ -172,11 +166,10 @@ export default function Contacts({
         </div>
 
         <button className="btn btn-primary" onClick={openAddModal}>
-           Tambah Mitra {activeSubTab === "customer" ? "Pelanggan" : "Supplier"}
+          Tambah Mitra {activeSubTab === "customer" ? "Pelanggan" : "Supplier"}
         </button>
       </div>
 
-      {/* Grid view of contacts (Cards layout looks very premium) */}
       <div
         className="contacts-grid"
         style={{
@@ -209,13 +202,11 @@ export default function Contacts({
                 </div>
               </div>
 
-              {/* Bio details */}
               <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "16px", flexGrow: 1, display: "flex", flexDirection: "column", gap: "6px" }}>
-                <div> {contact.phone || <em style={{ color: "var(--text-muted)" }}>Tidak ada telepon</em>}</div>
-                <div> {contact.address || <em style={{ color: "var(--text-muted)" }}>Tidak ada alamat</em>}</div>
+                <div>{contact.phone || <em style={{ color: "var(--text-muted)" }}>Tidak ada telepon</em>}</div>
+                <div>{contact.address || <em style={{ color: "var(--text-muted)" }}>Tidak ada alamat</em>}</div>
               </div>
 
-              {/* Transaction Stats Summary */}
               <div
                 style={{
                   background: "var(--bg-primary)",
@@ -254,12 +245,11 @@ export default function Contacts({
 
         {filteredContacts.length === 0 && (
           <div style={{ gridColumn: "1 / -1", textAlign: "center", color: "var(--text-muted)", padding: "40px" }} className="content-card">
-             Tidak ada data kontak {activeSubTab === "customer" ? "pelanggan" : "supplier"} ditemukan.
+            Tidak ada data kontak {activeSubTab === "customer" ? "pelanggan" : "supplier"} ditemukan.
           </div>
         )}
       </div>
 
-      {/* MODAL: Add Contact */}
       {isAddModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -331,7 +321,6 @@ export default function Contacts({
         </div>
       )}
 
-      {/* MODAL: Edit Contact */}
       {isEditModalOpen && editingContact && (
         <div className="modal-overlay">
           <div className="modal-content">

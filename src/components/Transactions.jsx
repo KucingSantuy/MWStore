@@ -1,10 +1,10 @@
 import { useState } from "react";
 
 export default function Transactions({ items, formatRupiah, onRecordRestock, onRecordSale, setActiveTab }) {
-  const [activeSubTab, setActiveSubTab] = useState("keluar"); // Default to sales (Barang Keluar) as it is most common
+  const [activeSubTab, setActiveSubTab] = useState("keluar");
   const [successMessage, setSuccessMessage] = useState("");
+  const [lastTransaction, setLastTransaction] = useState(null);
 
-  // Form: Barang Masuk (Restock)
   const [restockForm, setRestockForm] = useState({
     itemId: "",
     qty: "",
@@ -14,7 +14,6 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
     date: new Date().toISOString().split("T")[0]
   });
 
-  // Form: Barang Keluar (Sales)
   const [saleForm, setSaleForm] = useState({
     itemId: "",
     qty: "",
@@ -26,7 +25,6 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
     date: new Date().toISOString().split("T")[0]
   });
 
-  // Adjust amountPaid when payment status changes
   const handlePaymentStatusChange = (status) => {
     setSaleForm((prev) => {
       return {
@@ -37,7 +35,6 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
     });
   };
 
-  // Submit Restock
   const handleRestockSubmit = async (e) => {
     e.preventDefault();
     const { itemId, qty, purchasePrice, location } = restockForm;
@@ -47,12 +44,9 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
     }
 
     const success = await onRecordRestock(restockForm);
-    
     if (success) {
       const item = items.find(it => it.id === itemId);
       setSuccessMessage(`Sukses menambah stok ${qty} ${item ? item.unit : ""} ${item ? item.name : ""} dari ${location}!`);
-      
-      // Reset Form
       setRestockForm({
         itemId: "",
         qty: "",
@@ -61,12 +55,10 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
         notes: "",
         date: new Date().toISOString().split("T")[0]
       });
-
       setTimeout(() => setSuccessMessage(""), 5000);
     }
   };
 
-  // Submit Sale
   const handleSaleSubmit = async (e) => {
     e.preventDefault();
     const { itemId, qty, sellingPrice, paymentStatus, amountPaid } = saleForm;
@@ -91,15 +83,27 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
       return;
     }
 
-    const success = await onRecordSale({
+    const invoiceId = await onRecordSale({
       ...saleForm,
       amountPaid: paid
     });
 
-    if (success) {
-      setSuccessMessage(`Sukses mencatat penjualan ${qty} ${selectedItem.unit} ${selectedItem.name}!`);
-      
-      // Reset Form
+    if (invoiceId) {
+      setLastTransaction({
+        invoiceId,
+        date: saleForm.date,
+        customer: saleForm.customer || "Umum",
+        itemName: selectedItem.name,
+        qty: Number(qty),
+        unit: selectedItem.unit,
+        price: Number(sellingPrice),
+        total,
+        paid,
+        debt: paymentStatus === "belum_lunas" ? Math.max(0, total - paid) : 0,
+        paymentStatus,
+        notes: saleForm.notes
+      });
+
       setSaleForm({
         itemId: "",
         qty: "",
@@ -110,11 +114,6 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
         notes: "",
         date: new Date().toISOString().split("T")[0]
       });
-
-      setTimeout(() => {
-        setSuccessMessage("");
-        setActiveTab("dashboard");
-      }, 2000);
     }
   };
 
@@ -125,7 +124,6 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
 
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-      {/* Sub Tabs */}
       <div style={{ display: "flex", gap: "12px", marginBottom: "24px" }}>
         <button
           className={`btn ${activeSubTab === "keluar" ? "btn-primary" : "btn-secondary"}`}
@@ -135,7 +133,7 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
             setSuccessMessage("");
           }}
         >
-           Barang Keluar / Catat Penjualan
+          Barang Keluar / Catat Penjualan
         </button>
         <button
           className={`btn ${activeSubTab === "masuk" ? "btn-primary" : "btn-secondary"}`}
@@ -145,11 +143,10 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
             setSuccessMessage("");
           }}
         >
-           Barang Masuk / Pembelian Stok
+          Barang Masuk / Pembelian Stok
         </button>
       </div>
 
-      {/* Success Banner */}
       {successMessage && (
         <div
           className="badge success"
@@ -168,7 +165,6 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
         </div>
       )}
 
-      {/* TAB 1: BARANG KELUAR (SALES) */}
       {activeSubTab === "keluar" && (
         <div className="content-card">
           <div className="card-title">Form Catat Penjualan Sembako</div>
@@ -346,14 +342,13 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
 
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "24px" }}>
               <button type="submit" className="btn btn-success" disabled={!saleForm.itemId}>
-                 Simpan & Selesaikan Penjualan
+                Simpan & Selesaikan Penjualan
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* TAB 2: BARANG MASUK (RESTOCK) */}
       {activeSubTab === "masuk" && (
         <div className="content-card">
           <div className="card-title">Form Pembelian Sembako / Restock Barang</div>
@@ -488,10 +483,115 @@ export default function Transactions({ items, formatRupiah, onRecordRestock, onR
 
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "24px" }}>
               <button type="submit" className="btn btn-primary" disabled={!restockForm.itemId}>
-                 Simpan Transaksi Masuk
+                Simpan Transaksi Masuk
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {lastTransaction && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000
+          }}
+        >
+          <div
+            className="content-card"
+            style={{
+              width: "90%",
+              maxWidth: "400px",
+              padding: "24px",
+              maxHeight: "90vh",
+              overflowY: "auto"
+            }}
+          >
+            <div id="print-area" style={{ fontFamily: "monospace", color: "#000", padding: "10px", backgroundColor: "#fff" }}>
+              <div style={{ textAlign: "center", marginBottom: "16px" }}>
+                <h3 style={{ margin: "0 0 4px 0", fontSize: "18px", fontWeight: "bold" }}>MW STORE</h3>
+                <p style={{ margin: 0, fontSize: "12px" }}>Persediaan Sembako Berkualitas</p>
+                <p style={{ margin: 0, fontSize: "12px" }}>Tanggal: {lastTransaction.date}</p>
+                <p style={{ margin: "4px 0 0 0", fontSize: "12px" }}>No: {lastTransaction.invoiceId}</p>
+              </div>
+              <div style={{ borderBottom: "1px dashed #000", marginBottom: "12px" }}></div>
+              <div style={{ fontSize: "13px", marginBottom: "12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                  <span>Pelanggan:</span>
+                  <span>{lastTransaction.customer}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Status:</span>
+                  <span style={{ textTransform: "uppercase" }}>{lastTransaction.paymentStatus === "lunas" ? "LUNAS" : "BELUM LUNAS"}</span>
+                </div>
+              </div>
+              <div style={{ borderBottom: "1px dashed #000", marginBottom: "12px" }}></div>
+              <div style={{ fontSize: "13px", marginBottom: "12px" }}>
+                <div style={{ fontWeight: "bold", marginBottom: "4px" }}>{lastTransaction.itemName}</div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>{lastTransaction.qty} {lastTransaction.unit} x {formatRupiah(lastTransaction.price)}</span>
+                  <span>{formatRupiah(lastTransaction.total)}</span>
+                </div>
+              </div>
+              <div style={{ borderBottom: "1px dashed #000", marginBottom: "12px" }}></div>
+              <div style={{ fontSize: "13px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", marginBottom: "4px" }}>
+                  <span>TOTAL:</span>
+                  <span>{formatRupiah(lastTransaction.total)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                  <span>BAYAR:</span>
+                  <span>{formatRupiah(lastTransaction.paid)}</span>
+                </div>
+                {lastTransaction.debt > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
+                    <span>SISA PIUTANG:</span>
+                    <span>{formatRupiah(lastTransaction.debt)}</span>
+                  </div>
+                )}
+              </div>
+              {lastTransaction.notes && (
+                <>
+                  <div style={{ borderBottom: "1px dashed #000", margin: "12px 0" }}></div>
+                  <div style={{ fontSize: "12px", fontStyle: "italic" }}>
+                    Catatan: {lastTransaction.notes}
+                  </div>
+                </>
+              )}
+              <div style={{ borderBottom: "1px dashed #000", margin: "12px 0" }}></div>
+              <div style={{ textAlign: "center", fontSize: "12px" }}>
+                Terima Kasih Atas Kunjungan Anda
+              </div>
+            </div>
+
+            <div className="no-print" style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+                onClick={() => window.print()}
+              >
+                Cetak Struk / Simpan PDF
+              </button>
+              <button
+                className="btn btn-secondary"
+                style={{ flex: 1 }}
+                onClick={() => {
+                  setLastTransaction(null);
+                  setActiveTab("dashboard");
+                }}
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

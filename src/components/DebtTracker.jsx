@@ -5,14 +5,12 @@ export default function DebtTracker({ debts, formatRupiah, onPayDebt }) {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState(null);
 
-  // Form states for paying debt
   const [paymentData, setPaymentData] = useState({
     amountPaid: "",
     date: new Date().toISOString().split("T")[0],
     notes: ""
   });
 
-  // Filter debts
   const activeDebts = debts.filter((debt) => debt.status === "belum_lunas");
   const filteredDebts = activeDebts.filter((debt) =>
     debt.customer.toLowerCase().includes(searchTerm.toLowerCase())
@@ -21,7 +19,7 @@ export default function DebtTracker({ debts, formatRupiah, onPayDebt }) {
   const openPaymentModal = (debt) => {
     setSelectedDebt(debt);
     setPaymentData({
-      amountPaid: debt.remaining, // Default to full remaining amount
+      amountPaid: debt.remaining,
       date: new Date().toISOString().split("T")[0],
       notes: ""
     });
@@ -55,7 +53,6 @@ export default function DebtTracker({ debts, formatRupiah, onPayDebt }) {
 
   return (
     <div>
-      {/* Controls */}
       <div className="page-header-controls">
         <div className="search-filter-box">
           <div className="search-input-wrapper">
@@ -74,7 +71,6 @@ export default function DebtTracker({ debts, formatRupiah, onPayDebt }) {
         </div>
       </div>
 
-      {/* Debt Table */}
       <div className="content-card">
         <div className="card-title">
           Daftar Piutang Aktif Pelanggan
@@ -109,7 +105,7 @@ export default function DebtTracker({ debts, formatRupiah, onPayDebt }) {
                   </td>
                   <td style={{ textAlign: "center" }}>
                     <button className="btn btn-primary" onClick={() => openPaymentModal(debt)}>
-                       Terima Cicilan / Lunasi
+                      Terima Cicilan / Lunasi
                     </button>
                   </td>
                 </tr>
@@ -127,7 +123,6 @@ export default function DebtTracker({ debts, formatRupiah, onPayDebt }) {
         </div>
       </div>
 
-      {/* MODAL: Settle Debt Payment / Installments */}
       {isPaymentModalOpen && selectedDebt && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -141,7 +136,6 @@ export default function DebtTracker({ debts, formatRupiah, onPayDebt }) {
             <form onSubmit={handlePaymentSubmit}>
               <div className="modal-body" style={{ maxHeight: "65vh" }}>
                 
-                {/* Financial Summary */}
                 <div
                   style={{
                     display: "grid",
@@ -162,7 +156,6 @@ export default function DebtTracker({ debts, formatRupiah, onPayDebt }) {
                   </div>
                 </div>
 
-                {/* Form fields */}
                 <div className="form-group">
                   <label className="form-label">Jumlah Pembayaran / Angsuran (Rp) *</label>
                   <input
@@ -199,7 +192,6 @@ export default function DebtTracker({ debts, formatRupiah, onPayDebt }) {
                   />
                 </div>
 
-                {/* Installment History Timeline */}
                 <div style={{ marginTop: "24px" }}>
                   <h4 style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "8px" }}>
                     Riwayat Pembayaran Sebelumnya:
