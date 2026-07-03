@@ -23,7 +23,60 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
   const [editingItem, setEditingItem] = useState(null);
   const [selectedItemHistory, setSelectedItemHistory] = useState(null);
 
-  const categories = ["Beras", "Minyak Goreng", "Gula", "Telur", "Mie Instan", "Tepung", "Bumbu", "Lain-lain"];
+  // Kategori kustom & pembuatan SKU otomatis
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [customCategory, setCustomCategory] = useState("");
+  const [showEditCategoryInput, setShowEditCategoryInput] = useState(false);
+  const [editCustomCategory, setEditCustomCategory] = useState("");
+
+  const getCategoryPrefix = (category) => {
+    if (!category) return "BRG";
+    const cat = category.toLowerCase().trim();
+    if (cat.includes("beras")) return "BRS";
+    if (cat.includes("minyak")) return "MYK";
+    if (cat.includes("gula")) return "GLA";
+    if (cat.includes("telur")) return "TLR";
+    if (cat.includes("mie") || cat.includes("mi ")) return "MIE";
+    if (cat.includes("tepung")) return "TPG";
+    if (cat.includes("bumbu")) return "BMB";
+    if (cat.includes("cup") || cat.includes("gelas") || cat.includes("plastik")) return "CUP";
+    if (cat.includes("margarin") || cat.includes("mentega")) return "MRG";
+    if (cat.includes("susu")) return "SSU";
+    
+    const clean = cat.replace(/[^a-z]/g, "");
+    if (clean.length >= 3) {
+      const consonants = clean.replace(/[aeiou]/g, "");
+      if (consonants.length >= 3) return consonants.substring(0, 3).toUpperCase();
+      return clean.substring(0, 3).toUpperCase();
+    }
+    return "BRG";
+  };
+
+  const generateAutoSku = (category, currentItems) => {
+    const prefix = getCategoryPrefix(category);
+    const regex = new RegExp(`^${prefix}-(\\d+)$`, 'i');
+    let maxNumber = 0;
+    
+    currentItems.forEach(item => {
+      if (item.sku) {
+        const match = item.sku.match(regex);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNumber) maxNumber = num;
+        }
+      }
+    });
+    
+    const nextNumber = maxNumber + 1;
+    const paddedNumber = String(nextNumber).padStart(3, '0');
+    return `${prefix}-${paddedNumber}`;
+  };
+
+  const defaultCategories = ["Beras", "Minyak Goreng", "Gula", "Telur", "Mie Instan", "Tepung", "Bumbu", "Lain-lain"];
+  const categories = Array.from(new Set([
+    ...defaultCategories,
+    ...items.map((item) => item.category)
+  ])).filter(Boolean);
 
   const filteredItems = items.filter((item) => {
     const matchesSearch =
@@ -35,16 +88,36 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
-    if (!newItem.sku || !newItem.name || !newItem.unit) {
-      alert("Mohon lengkapi SKU, nama barang, dan satuan.");
+    if (!newItem.name || !newItem.unit) {
+      alert("Mohon lengkapi nama barang dan satuan.");
       return;
     }
-    if (items.some((it) => it.sku.toLowerCase() === newItem.sku.toLowerCase())) {
-      alert("SKU / Kode barang sudah terdaftar!");
+
+    const finalCategory = showNewCategoryInput ? customCategory.trim() : newItem.category;
+    if (!finalCategory) {
+      alert("Mohon pilih atau masukkan kategori.");
       return;
     }
-    onAddItem(newItem);
+
+    let finalSku = newItem.sku.trim();
+    if (!finalSku) {
+      finalSku = generateAutoSku(finalCategory, items);
+    } else {
+      if (items.some((it) => it.sku.toLowerCase() === finalSku.toLowerCase())) {
+        alert("SKU / Kode barang sudah terdaftar!");
+        return;
+      }
+    }
+
+    onAddItem({
+      ...newItem,
+      sku: finalSku,
+      category: finalCategory
+    });
+
     setIsAddModalOpen(false);
+    setShowNewCategoryInput(false);
+    setCustomCategory("");
     setNewItem({
       sku: "",
       name: "",
@@ -64,13 +137,27 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
       alert("Mohon lengkapi nama barang dan satuan.");
       return;
     }
-    onUpdateItem(editingItem);
+
+    const finalCategory = showEditCategoryInput ? editCustomCategory.trim() : editingItem.category;
+    if (!finalCategory) {
+      alert("Mohon pilih atau masukkan kategori.");
+      return;
+    }
+
+    onUpdateItem({
+      ...editingItem,
+      category: finalCategory
+    });
     setIsEditModalOpen(false);
     setEditingItem(null);
+    setShowEditCategoryInput(false);
+    setEditCustomCategory("");
   };
 
   const openEditModal = (item) => {
     setEditingItem({ ...item });
+    setShowEditCategoryInput(false);
+    setEditCustomCategory("");
     setIsEditModalOpen(true);
   };
 
@@ -217,31 +304,52 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
               <div className="modal-body">
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Kode Barang / SKU</label>
+                    <label className="form-label">Kode Barang / SKU (Opsional)</label>
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="Contoh: BR-003"
+                      placeholder="Kosongkan untuk otomatis"
                       value={newItem.sku}
                       onChange={(e) => setNewItem({ ...newItem, sku: e.target.value })}
-                      required
                     />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Kategori</label>
                     <select
                       className="form-control"
-                      value={newItem.category}
-                      onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
+                      value={showNewCategoryInput ? "__new__" : newItem.category}
+                      onChange={(e) => {
+                        if (e.target.value === "__new__") {
+                          setShowNewCategoryInput(true);
+                        } else {
+                          setShowNewCategoryInput(false);
+                          setNewItem({ ...newItem, category: e.target.value });
+                        }
+                      }}
                     >
                       {categories.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
                         </option>
                       ))}
+                      <option value="__new__">+ Tambah Kategori Baru...</option>
                     </select>
                   </div>
                 </div>
+
+                {showNewCategoryInput && (
+                  <div className="form-group" style={{ marginBottom: "16px" }}>
+                    <label className="form-label">Nama Kategori Baru</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Masukkan nama kategori baru"
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
 
                 <div className="form-group">
                   <label className="form-label">Nama Sembako</label>
@@ -364,17 +472,39 @@ export default function Inventory({ items, formatRupiah, onAddItem, onUpdateItem
                     <label className="form-label">Kategori</label>
                     <select
                       className="form-control"
-                      value={editingItem.category}
-                      onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
+                      value={showEditCategoryInput ? "__new__" : editingItem.category}
+                      onChange={(e) => {
+                        if (e.target.value === "__new__") {
+                          setShowEditCategoryInput(true);
+                        } else {
+                          setShowEditCategoryInput(false);
+                          setEditingItem({ ...editingItem, category: e.target.value });
+                        }
+                      }}
                     >
                       {categories.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
                         </option>
                       ))}
+                      <option value="__new__">+ Tambah Kategori Baru...</option>
                     </select>
                   </div>
                 </div>
+
+                {showEditCategoryInput && (
+                  <div className="form-group" style={{ marginBottom: "16px" }}>
+                    <label className="form-label">Nama Kategori Baru</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Masukkan nama kategori baru"
+                      value={editCustomCategory}
+                      onChange={(e) => setEditCustomCategory(e.target.value)}
+                      required
+                    />
+                  </div>
+                )}
 
                 <div className="form-group">
                   <label className="form-label">Nama Sembako</label>
