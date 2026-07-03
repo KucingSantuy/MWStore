@@ -1055,7 +1055,26 @@ body {
     padding: 12px 16px;
   }
   .top-bar-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .meta-time {
     display: none;
+  }
+  .profile-name,
+  .chevron-icon {
+    display: none;
+  }
+  .profile-btn {
+    padding: 4px;
+  }
+  .custom-table {
+    font-size: 11px;
+  }
+  .custom-table th, 
+  .custom-table td {
+    padding: 8px 6px;
   }
   .page-content {
     padding: 16px;
