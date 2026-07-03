@@ -26,6 +26,7 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [changePasswordData, setChangePasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -409,38 +410,43 @@ export default function App() {
 
   return (
     <div className="app-container">
-      <aside className="sidebar">
+      {isSidebarOpen && <div className="sidebar-overlay-active" onClick={() => setIsSidebarOpen(false)}></div>}
+      
+      <aside className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
         <div>
-          <div className="sidebar-brand">
+          <div className="sidebar-brand" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
             <span className="sidebar-logo">MWStore</span>
+            <button className="sidebar-close-btn" onClick={() => setIsSidebarOpen(false)}>
+              <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
           <nav>
             <ul className="sidebar-menu">
-              <li className={`sidebar-item ${activeTab === "dashboard" ? "active" : ""}`} onClick={() => setActiveTab("dashboard")}>
+              <li className={`sidebar-item ${activeTab === "dashboard" ? "active" : ""}`} onClick={() => { setActiveTab("dashboard"); setIsSidebarOpen(false); }}>
                 <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
                 Dashboard
               </li>
-              <li className={`sidebar-item ${activeTab === "inventory" ? "active" : ""}`} onClick={() => setActiveTab("inventory")}>
+              <li className={`sidebar-item ${activeTab === "inventory" ? "active" : ""}`} onClick={() => { setActiveTab("inventory"); setIsSidebarOpen(false); }}>
                 <svg viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4 8 4 8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>
                 Stok Sembako
               </li>
-              <li className={`sidebar-item ${activeTab === "transactions" ? "active" : ""}`} onClick={() => setActiveTab("transactions")}>
+              <li className={`sidebar-item ${activeTab === "transactions" ? "active" : ""}`} onClick={() => { setActiveTab("transactions"); setIsSidebarOpen(false); }}>
                 <svg viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M12 20h.01"/><path d="M12 4h.01"/><path d="M21 16v-2.83a2 2 0 0 0-.59-1.41l-4.83-4.83a2 2 0 0 0-1.41-.59H12"/><path d="M3 8V5a2 2 0 0 1 2-2h4"/></svg>
                 Transaksi Baru
               </li>
-              <li className={`sidebar-item ${activeTab === "debts" ? "active" : ""}`} onClick={() => setActiveTab("debts")}>
+              <li className={`sidebar-item ${activeTab === "debts" ? "active" : ""}`} onClick={() => { setActiveTab("debts"); setIsSidebarOpen(false); }}>
                 <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                 Kelola Piutang
               </li>
-              <li className={`sidebar-item ${activeTab === "contacts" ? "active" : ""}`} onClick={() => setActiveTab("contacts")}>
+              <li className={`sidebar-item ${activeTab === "contacts" ? "active" : ""}`} onClick={() => { setActiveTab("contacts"); setIsSidebarOpen(false); }}>
                 <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 Mitra Bisnis
               </li>
-              <li className={`sidebar-item ${activeTab === "reports" ? "active" : ""}`} onClick={() => setActiveTab("reports")}>
+              <li className={`sidebar-item ${activeTab === "reports" ? "active" : ""}`} onClick={() => { setActiveTab("reports"); setIsSidebarOpen(false); }}>
                 <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                 Laporan Statistik
               </li>
-              <li className={`sidebar-item ${activeTab === "logs" ? "active" : ""}`} onClick={() => setActiveTab("logs")}>
+              <li className={`sidebar-item ${activeTab === "logs" ? "active" : ""}`} onClick={() => { setActiveTab("logs"); setIsSidebarOpen(false); }}>
                 <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 Log Riwayat
               </li>
@@ -453,7 +459,7 @@ export default function App() {
           </button>
           <button
             className="theme-toggle-btn"
-            onClick={() => setIsChangePasswordOpen(true)}
+            onClick={() => { setIsChangePasswordOpen(true); setIsSidebarOpen(false); }}
             style={{ marginTop: "8px" }}
           >
             Ganti Password
@@ -483,14 +489,19 @@ export default function App() {
 
       <main className="main-content">
         <header className="top-bar">
-          <div className="top-bar-title">
-            {activeTab === "dashboard" && "Dashboard Ringkasan"}
-            {activeTab === "inventory" && "Manajemen Stok Sembako"}
-            {activeTab === "transactions" && "Input Transaksi Baru"}
-            {activeTab === "debts" && "Daftar Piutang & Cicilan"}
-            {activeTab === "contacts" && "Daftar & Kontak Mitra Bisnis"}
-            {activeTab === "reports" && "Laporan Statistik Bulanan & Mingguan"}
-            {activeTab === "logs" && "Riwayat Seluruh Transaksi"}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <button className="mobile-menu-toggle" onClick={() => setIsSidebarOpen(true)}>
+              <svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div className="top-bar-title">
+              {activeTab === "dashboard" && "Dashboard Ringkasan"}
+              {activeTab === "inventory" && "Manajemen Stok Sembako"}
+              {activeTab === "transactions" && "Input Transaksi Baru"}
+              {activeTab === "debts" && "Daftar Piutang & Cicilan"}
+              {activeTab === "contacts" && "Daftar & Kontak Mitra Bisnis"}
+              {activeTab === "reports" && "Laporan Statistik Bulanan & Mingguan"}
+              {activeTab === "logs" && "Riwayat Seluruh Transaksi"}
+            </div>
           </div>
           <div className="top-bar-meta">
             <div className="meta-time">{formatDateTime(currentTime)}</div>
