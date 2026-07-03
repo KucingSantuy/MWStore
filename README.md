@@ -60,12 +60,12 @@ Database terdiri dari 6 tabel utama dengan relasi kunci asing (*foreign key*) un
 erDiagram
     users {
         string id PK
-        string username UNIQUE
+        string username UK
         string password "SHA256 Hash"
     }
     items {
         string id PK
-        string sku UNIQUE
+        string sku UK
         string name
         string category
         int stock
