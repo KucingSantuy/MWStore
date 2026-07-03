@@ -25,6 +25,13 @@ export default function App() {
   });
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [changePasswordData, setChangePasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+
   const [items, setItems] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [debts, setDebts] = useState([]);
@@ -114,6 +121,33 @@ export default function App() {
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  };
+
+  const handleChangePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (changePasswordData.newPassword !== changePasswordData.confirmPassword) {
+      alert("Konfirmasi kata sandi baru tidak cocok.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/change-password", {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({
+          currentPassword: changePasswordData.currentPassword,
+          newPassword: changePasswordData.newPassword
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Gagal mengganti password");
+      }
+      alert("Password berhasil diperbarui!");
+      setIsChangePasswordOpen(false);
+      setChangePasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
   };
 
   const formatRupiah = (value) => {
@@ -419,6 +453,13 @@ export default function App() {
           </button>
           <button
             className="theme-toggle-btn"
+            onClick={() => setIsChangePasswordOpen(true)}
+            style={{ marginTop: "8px" }}
+          >
+            Ganti Password
+          </button>
+          <button
+            className="theme-toggle-btn"
             onClick={handleLogout}
             style={{
               marginTop: "8px",
@@ -528,6 +569,67 @@ export default function App() {
           )}
         </div>
       </main>
+
+      {isChangePasswordOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3 className="modal-title">Ganti Password Admin</h3>
+              <button className="modal-close" onClick={() => {
+                setIsChangePasswordOpen(false);
+                setChangePasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+              }}>
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <form onSubmit={handleChangePasswordSubmit}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Kata Sandi Sekarang *</label>
+                  <input
+                    type="password"
+                    className="form-control"
+                    required
+                    value={changePasswordData.currentPassword}
+                    onChange={(e) => setChangePasswordData({ ...changePasswordData, currentPassword: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Kata Sandi Baru *</label>
+                  <input
+                    type="password"
+                    className="form-control"
+                    required
+                    value={changePasswordData.newPassword}
+                    onChange={(e) => setChangePasswordData({ ...changePasswordData, newPassword: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Konfirmasi Kata Sandi Baru *</label>
+                  <input
+                    type="password"
+                    className="form-control"
+                    required
+                    value={changePasswordData.confirmPassword}
+                    onChange={(e) => setChangePasswordData({ ...changePasswordData, confirmPassword: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => {
+                  setIsChangePasswordOpen(false);
+                  setChangePasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                }}>
+                  Batal
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Perbarui Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

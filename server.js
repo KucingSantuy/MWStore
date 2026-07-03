@@ -265,6 +265,26 @@ app.get('/api/verify-token', authenticate, (req, res) => {
   res.json({ valid: true, username: req.user.username });
 });
 
+app.post('/api/change-password', authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Kata sandi saat ini dan kata sandi baru wajib diisi.' });
+    }
+    const hashedCurrent = crypto.createHash('sha256').update(currentPassword).digest('hex');
+    const [rows] = await pool.query('SELECT * FROM users WHERE username = ? AND password = ?', [req.user.username, hashedCurrent]);
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'Kata sandi saat ini salah.' });
+    }
+    const hashedNew = crypto.createHash('sha256').update(newPassword).digest('hex');
+    await pool.query('UPDATE users SET password = ? WHERE username = ?', [hashedNew, req.user.username]);
+    res.json({ message: 'Kata sandi berhasil diperbarui.' });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({ error: 'Gagal memperbarui kata sandi.' });
+  }
+});
+
 app.get('/api/items', authenticate, async (req, res) => {
   try {
     const [items] = await pool.query('SELECT * FROM items');
