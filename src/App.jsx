@@ -382,34 +382,21 @@ export default function App() {
         alert("Format backup tidak valid!");
         return false;
       }
-      alert("Mengimpor data langsung ke database MySQL...");
-      const res = await fetch('/api/reset', {
+      alert("Memproses pemulihan data ke database MySQL...");
+      const res = await fetch('/api/restore', {
         method: 'POST',
-        headers: getHeaders()
+        headers: getHeaders(),
+        body: jsonData
       });
-      if (!res.ok) throw new Error('Gagal mereset database untuk impor');
-
-      for (const c of parsed.contacts) {
-        await fetch('/api/contacts', {
-          method: 'POST',
-          headers: getHeaders(),
-          body: JSON.stringify(c)
-        });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Gagal memulihkan database');
       }
-
-      for (const item of parsed.items) {
-        await fetch('/api/items', {
-          method: 'POST',
-          headers: getHeaders(),
-          body: JSON.stringify(item)
-        });
-      }
-
       await refreshAllData();
       alert("Database MySQL berhasil dipulihkan dari file backup!");
       return true;
     } catch (e) {
-      alert("Gagal membaca atau memulihkan file JSON: " + e.message);
+      alert("Gagal memulihkan file backup: " + e.message);
       return false;
     }
   };

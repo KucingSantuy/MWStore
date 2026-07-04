@@ -639,6 +639,78 @@ app.delete('/api/contacts/:id', authenticate, async (req, res) => {
   }
 });
 
+app.post('/api/restore', authenticate, async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const { items, transactions, debts, contacts } = req.body;
+    if (!items || !transactions || !debts || !contacts) {
+      return res.status(400).json({ error: "Format backup tidak valid." });
+    }
+
+    // Nonaktifkan foreign key checks untuk menghapus data tabel dengan aman
+    await conn.query('SET FOREIGN_KEY_CHECKS = 0');
+    await conn.query('DELETE FROM purchase_history');
+    await conn.query('DELETE FROM items');
+    await conn.query('DELETE FROM transactions');
+    await conn.query('DELETE FROM contacts');
+    await conn.query('DELETE FROM debts');
+
+    // 1. Pulihkan Kontak Mitra
+    for (const c of contacts) {
+      await conn.query(
+        'INSERT INTO contacts (id, name, phone, address, type) VALUES (?, ?, ?, ?, ?)',
+        [c.id, c.name, c.phone || '', c.address || '', c.type]
+      );
+    }
+
+    // 2. Pulihkan Barang (Items) beserta Riwayat Belanja (purchaseHistory)
+    for (const item of items) {
+      await conn.query(
+        'INSERT INTO items (id, sku, name, category, stock, minStock, unit, purchasePrice, sellingPrice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [item.id, item.sku, item.name, item.category, item.stock, item.minStock, item.unit, item.purchasePrice, item.sellingPrice]
+      );
+
+      if (item.purchaseHistory && Array.isArray(item.purchaseHistory)) {
+        for (const ph of item.purchaseHistory) {
+          await conn.query(
+            'INSERT INTO purchase_history (id, itemId, date, price, location, qty) VALUES (?, ?, ?, ?, ?, ?)',
+            [ph.id, ph.itemId, ph.date, ph.price, ph.location, ph.qty]
+          );
+        }
+      }
+    }
+
+    // 3. Pulihkan Log Transaksi (Transactions)
+    for (const tx of transactions) {
+      await conn.query(
+        'INSERT INTO transactions (id, invoiceId, date, type, itemId, itemName, qty, price, total, location, notes, customer, paymentStatus, amountPaid, debt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [tx.id, tx.invoiceId || null, tx.date, tx.type, tx.itemId || null, tx.itemName, tx.qty, tx.price, tx.total, tx.location || null, tx.notes || null, tx.customer || null, tx.paymentStatus || null, tx.amountPaid || 0, tx.debt || 0]
+      );
+    }
+
+    // 4. Pulihkan Catatan Hutang Piutang (Debts)
+    for (const d of debts) {
+      const paymentsStr = typeof d.payments === 'string' ? d.payments : JSON.stringify(d.payments || []);
+      await conn.query(
+        'INSERT INTO debts (id, invoiceId, txId, date, customer, total, paid, remaining, payments, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [d.id, d.invoiceId || null, d.txId, d.date, d.customer, d.total, d.paid, d.remaining, paymentsStr, d.status]
+      );
+    }
+
+    await conn.query('SET FOREIGN_KEY_CHECKS = 1');
+    await conn.commit();
+    res.json({ message: 'Database berhasil dipulihkan dari file backup.' });
+  } catch (error) {
+    await conn.rollback();
+    console.error("Error restoring database:", error);
+    res.status(500).json({ error: "Gagal memulihkan database: " + error.message });
+  } finally {
+    conn.release();
+  }
+});
+
 app.post('/api/reset', authenticate, async (req, res) => {
   try {
     await pool.query('SET FOREIGN_KEY_CHECKS = 0');
