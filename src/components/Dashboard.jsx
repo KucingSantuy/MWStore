@@ -1,4 +1,4 @@
-export default function Dashboard({ items, transactions, debts, formatRupiah, setActiveTab }) {
+export default function Dashboard({ items, transactions, debts, formatRupiah, setActiveTab, onExport, onImport }) {
   const totalItemsCount = items.length;
   
   const totalStockValue = items.reduce((acc, item) => {
@@ -291,6 +291,62 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="content-card" style={{ marginTop: "24px" }}>
+        <div className="card-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" style={{ color: "var(--primary)" }}>
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          <span>Pencadangan & Keamanan Data (Backup / Restore)</span>
+        </div>
+        <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginBottom: "16px", lineHeight: "1.6" }}>
+          Karena sistem menggunakan hosting gratisan, data Anda rentan hilang apabila database dinonaktifkan atau di-reset oleh penyedia hosting. 
+          Sangat disarankan untuk melakukan <strong>ekspor data (Backup) secara berkala</strong> dan menyimpannya di komputer lokal Anda agar seluruh data transaksi, produk, dan hutang tetap aman.
+        </p>
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+          <button className="btn btn-primary" onClick={onExport}>
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" style={{ marginRight: "4px" }}>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Ekspor Data (Backup JSON)
+          </button>
+          
+          <div style={{ position: "relative" }}>
+            <button className="btn btn-secondary" onClick={() => document.getElementById('import-file-input').click()}>
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" style={{ marginRight: "4px" }}>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              Impor Data (Restore JSON)
+            </button>
+            <input 
+              id="import-file-input" 
+              type="file" 
+              accept=".json" 
+              style={{ display: "none" }} 
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                  const content = event.target.result;
+                  if (window.confirm("Peringatan: Tindakan ini akan menghapus semua data Anda saat ini di database dan menggantinya dengan data dari file backup. Apakah Anda yakin ingin melanjutkan?")) {
+                    const success = await onImport(content);
+                    if (success) {
+                      e.target.value = '';
+                    }
+                  }
+                };
+                reader.readAsText(file);
+              }}
+            />
           </div>
         </div>
       </div>
