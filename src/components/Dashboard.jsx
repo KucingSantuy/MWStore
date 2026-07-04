@@ -24,6 +24,14 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
     return acc;
   }, {});
 
+  const categoryUnitBreakdown = items.reduce((acc, item) => {
+    if (!acc[item.category]) {
+      acc[item.category] = {};
+    }
+    acc[item.category][item.unit] = (acc[item.category][item.unit] || 0) + item.stock;
+    return acc;
+  }, {});
+
   const maxStock = Math.max(...Object.values(categoryData), 1);
 
   const chartData = [];
@@ -233,11 +241,15 @@ export default function Dashboard({ items, transactions, debts, formatRupiah, se
             ) : (
               Object.entries(categoryData).map(([category, count]) => {
                 const percentage = Math.round((count / maxStock) * 100);
+                const breakdown = categoryUnitBreakdown[category] || {};
+                const breakdownStr = Object.entries(breakdown)
+                  .map(([unit, val]) => `${val} ${unit}`)
+                  .join(", ");
                 return (
                   <div key={category} className="category-progress-item">
                     <div className="category-progress-label">
                       <span>{category}</span>
-                      <span style={{ fontWeight: 600 }}>{count} unit/kg</span>
+                      <span style={{ fontWeight: 600 }}>{breakdownStr}</span>
                     </div>
                     <div className="category-progress-bar-bg">
                       <div
