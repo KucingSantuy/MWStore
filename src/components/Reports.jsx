@@ -56,14 +56,14 @@ export default function Reports({ transactions, items, formatRupiah }) {
   const salesQuantityMap = rangeTransactions
     .filter((t) => t.type === "keluar")
     .reduce((acc, t) => {
-      acc[t.itemName] = (acc[t.itemName] || 0) + t.qty;
+      acc[t.itemName] = (acc[t.itemName] || 0) + Number(t.qty || 0);
       return acc;
     }, {});
 
   const topSellingItems = Object.entries(salesQuantityMap)
     .map(([name, qty]) => {
       const txs = rangeTransactions.filter(t => t.itemName === name && t.type === "keluar");
-      const totalRevenue = txs.reduce((sum, t) => sum + t.total, 0);
+      const totalRevenue = txs.reduce((sum, t) => sum + Number(t.total || 0), 0);
       return { name, qty, totalRevenue };
     })
     .sort((a, b) => b.qty - a.qty)
