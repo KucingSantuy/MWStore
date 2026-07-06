@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function TransactionLogs({ transactions, formatRupiah }) {
+export default function TransactionLogs({ transactions, formatRupiah, onDeleteTransaction }) {
   const formatDateStr = (dateStr) => {
     if (!dateStr) return "-";
     const clean = typeof dateStr === 'string' ? dateStr.split("T")[0] : new Date(dateStr).toISOString().split("T")[0];
@@ -81,6 +81,7 @@ export default function TransactionLogs({ transactions, formatRupiah }) {
                 <th style={{ textAlign: "right" }}>Total</th>
                 <th>Keterangan Toko / Pembeli</th>
                 <th>Catatan</th>
+                <th style={{ textAlign: "center" }}>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -145,13 +146,25 @@ export default function TransactionLogs({ transactions, formatRupiah }) {
                         {tx.notes || "-"}
                       </span>
                     </td>
+                    <td style={{ textAlign: "center" }}>
+                      {(tx.type === "masuk" || tx.type === "keluar") && (
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => onDeleteTransaction(tx)}
+                          style={{ padding: "4px 8px", fontSize: "11px", borderRadius: "var(--radius-sm)" }}
+                          title="Hapus Transaksi"
+                        >
+                          Hapus
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
 
               {filteredTxs.length === 0 && (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: "center", color: "var(--text-muted)", padding: "24px" }}>
+                  <td colSpan="10" style={{ textAlign: "center", color: "var(--text-muted)", padding: "24px" }}>
                     Belum ada catatan transaksi log yang sesuai dengan filter.
                   </td>
                 </tr>

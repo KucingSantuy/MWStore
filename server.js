@@ -639,6 +639,134 @@ app.delete('/api/contacts/:id', authenticate, async (req, res) => {
   }
 });
 
+app.delete('/api/transactions/:id', authenticate, async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const { id } = req.params;
+
+    // 1. Dapatkan detail transaksi
+    const [txRows] = await conn.query('SELECT * FROM transactions WHERE id = ?', [id]);
+    if (txRows.length === 0) {
+      return res.status(404).json({ error: 'Transaksi tidak ditemukan.' });
+    }
+    const tx = txRows[0];
+
+    // Logika hapus transaksi masuk (Restock)
+    if (tx.type === 'masuk') {
+      const itemId = tx.itemId;
+      if (!itemId) {
+        return res.status(400).json({ error: 'Transaksi tidak memiliki ID barang.' });
+      }
+      
+      const [itemRows] = await conn.query('SELECT * FROM items WHERE id = ?', [itemId]);
+      if (itemRows.length === 0) {
+        return res.status(400).json({ error: 'Barang yang terkait dengan transaksi ini tidak ditemukan.' });
+      }
+      const item = itemRows[0];
+
+      // Validasi apakah stok mencukupi untuk dikurangi
+      if (item.stock < tx.qty) {
+        return res.status(400).json({ 
+          error: `Stok tidak mencukupi untuk membatalkan pembelian ini! Sisa stok barang '${item.name}': ${item.stock} ${item.unit}, jumlah restock yang ingin dibatalkan: ${tx.qty} ${item.unit}.` 
+        });
+      }
+
+      // Kurangi stok
+      const newStock = item.stock - tx.qty;
+
+      // Hapus satu entri yang cocok di purchase_history
+      await conn.query(
+        'DELETE FROM purchase_history WHERE itemId = ? AND date = ? AND price = ? AND qty = ? LIMIT 1',
+        [itemId, tx.date, tx.price, tx.qty]
+      );
+
+      // Cari harga beli terakhir dari riwayat pembelian yang tersisa
+      const [phRows] = await conn.query(
+        'SELECT price FROM purchase_history WHERE itemId = ? ORDER BY date DESC, id DESC LIMIT 1',
+        [itemId]
+      );
+      const latestPrice = phRows.length > 0 ? phRows[0].price : 0;
+
+      // Update stok dan harga beli barang
+      await conn.query(
+        'UPDATE items SET stock = ?, purchasePrice = ? WHERE id = ?',
+        [newStock, latestPrice, itemId]
+      );
+
+      // Hapus transaksi log
+      await conn.query('DELETE FROM transactions WHERE id = ?', [id]);
+
+    } else if (tx.type === 'keluar') {
+      // Logika hapus transaksi keluar (Penjualan / Kasbon)
+      const invoiceId = tx.invoiceId;
+
+      if (invoiceId) {
+        // Dapatkan semua detail transaksi dalam invoice ini
+        const [invTxRows] = await conn.query('SELECT * FROM transactions WHERE invoiceId = ?', [invoiceId]);
+        
+        // Cek piutang terkait
+        const [debtRows] = await conn.query('SELECT * FROM debts WHERE invoiceId = ?', [invoiceId]);
+        if (debtRows.length > 0) {
+          const debt = debtRows[0];
+          let payments = [];
+          try {
+            payments = JSON.parse(debt.payments);
+          } catch (e) {
+            payments = [];
+          }
+          // Jika sudah dicicil (panjang array payments > 1, indeks 0 adalah down payment / uang muka awal)
+          if (payments.length > 1) {
+            return res.status(400).json({ 
+              error: 'Penjualan tidak dapat dihapus karena hutang (piutang) transaksi ini sudah mulai dicicil oleh pelanggan.' 
+            });
+          }
+          // Hapus piutang
+          await conn.query('DELETE FROM debts WHERE invoiceId = ?', [invoiceId]);
+        }
+
+        // Kembalikan stok untuk seluruh barang dalam invoice
+        for (const invTx of invTxRows) {
+          if (invTx.itemId) {
+            const [itemRows] = await conn.query('SELECT * FROM items WHERE id = ?', [invTx.itemId]);
+            if (itemRows.length > 0) {
+              const item = itemRows[0];
+              const newStock = item.stock + invTx.qty;
+              await conn.query('UPDATE items SET stock = ? WHERE id = ?', [newStock, invTx.itemId]);
+            }
+          }
+        }
+
+        // Hapus seluruh baris transaksi yang memiliki invoiceId tersebut
+        await conn.query('DELETE FROM transactions WHERE invoiceId = ?', [invoiceId]);
+
+      } else {
+        // Kasus data lama atau data tanpa invoiceId
+        if (tx.itemId) {
+          const [itemRows] = await conn.query('SELECT * FROM items WHERE id = ?', [tx.itemId]);
+          if (itemRows.length > 0) {
+            const item = itemRows[0];
+            const newStock = item.stock + tx.qty;
+            await conn.query('UPDATE items SET stock = ? WHERE id = ?', [newStock, tx.itemId]);
+          }
+        }
+        await conn.query('DELETE FROM transactions WHERE id = ?', [id]);
+      }
+    } else {
+      return res.status(400).json({ error: 'Penghapusan tipe transaksi ini tidak didukung.' });
+    }
+
+    await conn.commit();
+    res.json({ message: 'Transaksi berhasil dihapus.' });
+  } catch (error) {
+    await conn.rollback();
+    console.error("Error deleting transaction:", error);
+    res.status(500).json({ error: "Gagal menghapus transaksi." });
+  } finally {
+    conn.release();
+  }
+});
+
 app.post('/api/restore', authenticate, async (req, res) => {
   const conn = await pool.getConnection();
   try {

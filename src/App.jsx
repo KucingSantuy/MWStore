@@ -249,6 +249,39 @@ export default function App() {
     }
   };
 
+  const handleDeleteTransaction = async (transaction) => {
+    let confirmMsg = "Apakah Anda yakin ingin menghapus transaksi ini?";
+    if (transaction.type === "masuk") {
+      confirmMsg = `Apakah Anda yakin ingin membatalkan transaksi stok masuk (restock) ini?\nStok barang '${transaction.itemName}' akan dikurangi sebanyak ${transaction.qty} ${transaction.unit || ''}.`;
+    } else if (transaction.type === "keluar") {
+      if (transaction.invoiceId) {
+        confirmMsg = `Apakah Anda yakin ingin menghapus transaksi penjualan ini?\n\nPERINGATAN: Menghapus transaksi ini akan membatalkan SELURUH barang dalam invoice '${transaction.invoiceId}'. Stok masing-masing barang akan dikembalikan ke gudang, dan catatan piutang yang terkait akan dihapus.`;
+      } else {
+        confirmMsg = `Apakah Anda yakin ingin menghapus transaksi penjualan ini?\nStok barang '${transaction.itemName}' akan dikembalikan ke gudang.`;
+      }
+    }
+
+    if (window.confirm(confirmMsg)) {
+      try {
+        const res = await fetch(`/api/transactions/${transaction.id}`, {
+          method: 'DELETE',
+          headers: getHeaders()
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Gagal menghapus transaksi');
+        }
+        await refreshAllData();
+        alert("Transaksi berhasil dihapus!");
+        return true;
+      } catch (err) {
+        alert("Error: " + err.message);
+        return false;
+      }
+    }
+    return false;
+  };
+
   const handleRecordRestock = async (restockData) => {
     try {
       const res = await fetch('/api/transactions/restock', {
@@ -601,6 +634,7 @@ export default function App() {
             <TransactionLogs
               transactions={transactions}
               formatRupiah={formatRupiah}
+              onDeleteTransaction={handleDeleteTransaction}
             />
           )}
         </div>
